@@ -10,71 +10,79 @@ def main():
         reuse_port=True
     )
 
+    
     conn, addr = server.accept()
 
     print(f"Connection from {addr}")
 
-    # Receive request
-    request = conn.recv(1024)
+    while True:
+        # Receive request
+        request = conn.recv(1024)
 
-    # Extract fields
-    api_version = int.from_bytes(
-        request[6:8],
-        byteorder="big"
-    )
+        # Client disconnected
+        if not request:
+            break
 
-    correlation_id = request[8:12]
+        # Extract fields
+        api_version = int.from_bytes(
+            request[6:8],
+            byteorder="big"
+        )
 
-    # Determine error code
-    if 0 <= api_version <= 4:
-        error_code = 0
-    else:
-        error_code = 35
+        correlation_id = request[8:12]
 
-    # -------------------------
-    # Build response body
-    # -------------------------
+        # Determine error code
+        if 0 <= api_version <= 4:
+            error_code = 0
+        else:
+            error_code = 35
 
-    response_body = b""
+        # -------------------------
+        # Build response body
+        # -------------------------
 
-    # error_code (INT16)
-    response_body += error_code.to_bytes(2, "big")
+        response_body = b""
 
-    # api_keys COMPACT_ARRAY
-    # 02 means array with 1 element
-    response_body += b"\x02"
+        # error_code (INT16)
+        response_body += error_code.to_bytes(2, "big")
 
-    # API entry
-    response_body += (18).to_bytes(2, "big")  # api_key
-    response_body += (0).to_bytes(2, "big")   # min_version
-    response_body += (4).to_bytes(2, "big")   # max_version
+        # api_keys COMPACT_ARRAY
+        # 02 means array with 1 element
+        response_body += b"\x02"
 
-    # TAG_BUFFER
-    response_body += b"\x00"
+        # API entry
+        response_body += (18).to_bytes(2, "big")  # api_key
+        response_body += (0).to_bytes(2, "big")   # min_version
+        response_body += (4).to_bytes(2, "big")   # max_version
 
-    # throttle_time_ms
-    response_body += (0).to_bytes(4, "big")
+        # TAG_BUFFER
+        response_body += b"\x00"
 
-    # Final TAG_BUFFER
-    response_body += b"\x00"
+        # throttle_time_ms
+        response_body += (0).to_bytes(4, "big")
 
-    # -------------------------
-    # Header
-    # -------------------------
+        # Final TAG_BUFFER
+        response_body += b"\x00"
 
-    response_header = correlation_id
+        # -------------------------
+        # Header
+        # -------------------------
 
-    # message_size excludes its own 4 bytes
-    message_size = len(response_header) + len(response_body)
+        response_header = correlation_id
 
-    # Build final response
-    response = (
-        message_size.to_bytes(4, "big") +
-        response_header +
-        response_body
-    )
+        # message_size excludes its own 4 bytes
+        message_size = len(response_header) + len(response_body)
 
-    conn.sendall(response)
+        # Build final response
+        response = (
+            message_size.to_bytes(4, "big") +
+            response_header +
+            response_body
+        )
+
+        conn.sendall(response)
+    
+    conn.close()
 
 
 if __name__ == "__main__":
