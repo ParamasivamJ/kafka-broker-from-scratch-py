@@ -97,15 +97,25 @@ def build_describe_topic_partitions_response(
 
         error_code = 0
 
+        print("TOPIC FOUND:", topic_name)
+        print("TOPIC INDEX:", topic_index)
+
+        start = max(0, topic_index - 64)
+        end = topic_index + 64
+
+        print(metadata[start:end].hex())
+
         # -----------------------------------------
         # UUID appears before compact string length
         # -----------------------------------------
 
-        name_length_index = topic_index - 1
+        #name_length_index = topic_index - 1
+
+        uuid_start = topic_index + len(topic_name) + 1
 
         topic_uuid = metadata[
-            name_length_index - 16:
-            name_length_index
+            uuid_start:
+            uuid_start + 16
         ]
 
     else:
