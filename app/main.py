@@ -97,9 +97,9 @@ def build_describe_topic_partitions_response(
 
         error_code = 0
 
-        # Heuristic UUID extraction
+        # Better UUID extraction
         topic_uuid = metadata[
-            topic_index - 16:topic_index
+            topic_index - 18: topic_index - 2
         ]
 
     else:
