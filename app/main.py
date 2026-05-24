@@ -104,7 +104,7 @@ def extract_partitions(metadata, topic_uuid):
     # actual partition 1 metadata
     # -------------------------------------------------
 
-    if partition_1_count >= 3:
+    if partition_1_count >= 2:
         partitions.append(1)
 
     return partitions or [0]
