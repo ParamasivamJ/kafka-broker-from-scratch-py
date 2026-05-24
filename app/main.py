@@ -105,13 +105,11 @@ def build_describe_topic_partitions_response(
 
         print(metadata[start:end].hex())
 
-        # -----------------------------------------
-        # UUID appears before compact string length
-        # -----------------------------------------
+        # -------------------------------------------------
+        # UUID starts immediately after topic name
+        # -------------------------------------------------
 
-        #name_length_index = topic_index - 1
-
-        uuid_start = topic_index + len(topic_name) + 1
+        uuid_start = topic_index + len(topic_name)
 
         topic_uuid = metadata[
             uuid_start:
