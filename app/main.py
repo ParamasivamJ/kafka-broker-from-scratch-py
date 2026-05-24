@@ -43,13 +43,14 @@ def handle_client(conn):
             # error_code
             response_body += error_code.to_bytes(2, "big")
 
-            # COMPACT_ARRAY with 1 entry
+            # COMPACT_ARRAY with 2 entry
             response_body += b"\x03"
 
             # ApiVersions entry
             response_body += (18).to_bytes(2, "big")
             response_body += (0).to_bytes(2, "big")
             response_body += (4).to_bytes(2, "big")
+            response_body += b"\x00"
 
             # DescribeTopicPartitions entry
 
@@ -57,7 +58,7 @@ def handle_client(conn):
             response_body += (0).to_bytes(2, "big")
             response_body += (0).to_bytes(2, "big")
             response_body += b"\x00"
-            
+
             # tag buffer
             response_body += b"\x00"
 
