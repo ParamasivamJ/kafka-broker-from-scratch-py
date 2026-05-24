@@ -97,9 +97,15 @@ def build_describe_topic_partitions_response(
 
         error_code = 0
 
-        # Better UUID extraction
+        # -----------------------------------------
+        # UUID appears before compact string length
+        # -----------------------------------------
+
+        name_length_index = topic_index - 1
+
         topic_uuid = metadata[
-            topic_index - 18: topic_index - 2
+            name_length_index - 16:
+            name_length_index
         ]
 
     else:
