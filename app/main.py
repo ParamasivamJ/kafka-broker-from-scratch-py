@@ -65,9 +65,48 @@ def build_apiversions_response(correlation_id, api_version):
     return response
 
 
+
 # =========================================================
 # DescribeTopicPartitions Response
 # =========================================================
+
+def serialize_partition(partition_index):
+
+    data = b""
+
+    # error_code
+    data += (0).to_bytes(2, "big")
+
+    # partition_index
+    data += partition_index.to_bytes(4, "big")
+
+    # leader_id
+    data += (1).to_bytes(4, "big")
+
+    # leader_epoch
+    data += (0).to_bytes(4, "big")
+
+    # replica_nodes
+    data += b"\x02"
+    data += (1).to_bytes(4, "big")
+
+    # isr_nodes
+    data += b"\x02"
+    data += (1).to_bytes(4, "big")
+
+    # eligible_leader_replicas
+    data += b"\x01"
+
+    # last_known_elr
+    data += b"\x01"
+
+    # offline_replicas
+    data += b"\x01"
+
+    # TAG_BUFFER
+    data += b"\x00"
+
+    return data
 
 def build_describe_topic_partitions_response(
     correlation_id,
@@ -156,8 +195,17 @@ def build_describe_topic_partitions_response(
 
     if error_code == 0:
 
-        # 1 partition
-        response_body += b"\x02"
+        partitions = [0, 1]
+
+        response_body += bytes([
+            len(partitions) + 1
+        ])
+
+        for partition_index in partitions:
+
+            response_body += serialize_partition(
+                partition_index
+            )
 
         # partition error_code
         response_body += (0).to_bytes(2, "big")
