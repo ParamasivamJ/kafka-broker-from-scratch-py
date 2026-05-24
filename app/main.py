@@ -70,6 +70,48 @@ def build_apiversions_response(correlation_id, api_version):
 # DescribeTopicPartitions Response
 # =========================================================
 
+def extract_partitions(metadata, topic_uuid):
+
+    partitions = []
+
+    # -------------------------------------------------
+    # Find UUID position
+    # -------------------------------------------------
+
+    uuid_index = metadata.find(topic_uuid)
+
+    if uuid_index == -1:
+        return [0]
+
+    # -------------------------------------------------
+    # Search nearby region
+    # -------------------------------------------------
+
+    start = uuid_index
+    end = min(len(metadata), uuid_index + 200)
+
+    region = metadata[start:end]
+
+    # -------------------------------------------------
+    # Detect partition 0
+    # -------------------------------------------------
+
+    if b"\x00\x00\x00\x00" in region:
+        partitions.append(0)
+
+    # -------------------------------------------------
+    # Detect partition 1
+    # -------------------------------------------------
+
+    if b"\x00\x00\x00\x01" in region:
+        partitions.append(1)
+
+    # fallback
+    if not partitions:
+        partitions = [0]
+
+    return sorted(set(partitions))
+
 def serialize_partition(partition_index):
 
     data = b""
@@ -107,6 +149,7 @@ def serialize_partition(partition_index):
     data += b"\x00"
 
     return data
+
 
 def build_describe_topic_partitions_response(
     correlation_id,
@@ -195,7 +238,10 @@ def build_describe_topic_partitions_response(
 
     if error_code == 0:
 
-        partitions = [0, 1]
+        partitions = extract_partitions(
+                    metadata,
+                    topic_uuid
+                )
 
         response_body += bytes([
             len(partitions) + 1
