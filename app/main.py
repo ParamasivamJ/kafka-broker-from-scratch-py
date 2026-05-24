@@ -72,91 +72,67 @@ def build_apiversions_response(correlation_id, api_version):
 
 def extract_partitions(metadata, topic_uuid):
 
-    uuid_index = metadata.find(topic_uuid)
-
-    print("\n========== PARTITION DEBUG ==========")
-
-    print("UUID INDEX:", uuid_index)
-
-    if uuid_index == -1:
-
-        print("UUID NOT FOUND")
-
-        return [0]
-
-    # -------------------------------------------------
-    # Search AFTER UUID
-    # -------------------------------------------------
-
-    region_start = uuid_index + 16
-    region_end = uuid_index + 120
-
-    region = metadata[
-        region_start:
-        region_end
-    ]
-
-    print("REGION START:", region_start)
-    print("REGION END:", region_end)
-
-    print("\nRAW REGION HEX:")
-    print(region.hex())
-
-    # -------------------------------------------------
-    # Print 4-byte chunks
-    # -------------------------------------------------
-
-    print("\n4-BYTE CHUNKS:")
-
-    for i in range(0, len(region), 4):
-
-        chunk = region[i:i+4]
-
-        if len(chunk) < 4:
-            break
-
-        value = int.from_bytes(
-            chunk,
-            "big"
-        )
-
-        print(
-            f"OFFSET {i:02d} | "
-            f"HEX {chunk.hex()} | "
-            f"INT {value}"
-        )
-
-    # -------------------------------------------------
-    # Detect partitions
-    # -------------------------------------------------
-
     partitions = []
 
-    for i in range(0, len(region) - 4):
+    search_start = 0
 
-        chunk = region[i:i+4]
+    while True:
 
-        value = int.from_bytes(
-            chunk,
-            "big"
+        # -----------------------------------------
+        # Find next UUID occurrence
+        # -----------------------------------------
+
+        uuid_index = metadata.find(
+            topic_uuid,
+            search_start
         )
 
-        # -------------------------------------------------
-        # Kafka partition IDs are usually small
-        # -------------------------------------------------
+        if uuid_index == -1:
+            break
 
-        if value in [0, 1, 2, 3]:
+        # -----------------------------------------
+        # Partition ID is 4 bytes BEFORE UUID
+        # -----------------------------------------
 
-            print(
-                f"CANDIDATE PARTITION:"
-                f" offset={i}"
-                f" value={value}"
+        if uuid_index >= 4:
+
+            partition_bytes = metadata[
+                uuid_index - 4:
+                uuid_index
+            ]
+
+            partition_id = int.from_bytes(
+                partition_bytes,
+                "big"
             )
 
-    print("=====================================\n")
+            # Avoid garbage values
+            if 0 <= partition_id <= 100:
 
-    # TEMPORARY
-    return [0, 1]
+                print(
+                    f"FOUND PARTITION:"
+                    f" {partition_id}"
+                )
+
+                partitions.append(
+                    partition_id
+                )
+
+        # Continue searching
+        search_start = uuid_index + 16
+
+    # Remove duplicates
+    partitions = sorted(
+        list(set(partitions))
+    )
+
+    print("FINAL PARTITIONS:", partitions)
+
+    # Fallback
+    if not partitions:
+        return [0]
+
+    return partitions
 
 def serialize_partition(partition_index):
 
