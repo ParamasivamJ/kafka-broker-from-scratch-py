@@ -207,38 +207,6 @@ def build_describe_topic_partitions_response(
                 partition_index
             )
 
-        # partition error_code
-        response_body += (0).to_bytes(2, "big")
-
-        # partition_index
-        response_body += (0).to_bytes(4, "big")
-
-        # leader_id
-        response_body += (1).to_bytes(4, "big")
-
-        # leader_epoch
-        response_body += (0).to_bytes(4, "big")
-
-        # replica_nodes array
-        response_body += b"\x02"
-        response_body += (1).to_bytes(4, "big")
-
-        # isr_nodes array
-        response_body += b"\x02"
-        response_body += (1).to_bytes(4, "big")
-
-        # eligible_leader_replicas
-        response_body += b"\x01"
-
-        # last_known_elr
-        response_body += b"\x01"
-
-        # offline_replicas
-        response_body += b"\x01"
-
-        # TAG_BUFFER
-        response_body += b"\x00"
-
     else:
 
         # empty partitions array
