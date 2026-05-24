@@ -175,7 +175,7 @@ def serialize_partition(partition_index):
 
 def build_describe_topic_partitions_response(
     correlation_id,
-    topic_name
+    topics
 ):
 
     # -------------------------------------------------
@@ -235,35 +235,97 @@ def build_describe_topic_partitions_response(
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
 
-    # topics compact array
-    response_body += b"\x02"
+        # =================================================
+    # TOPICS ARRAY
+    # =================================================
 
-    # topic error_code
-    response_body += error_code.to_bytes(2, "big")
-
-    # topic_name compact string
     response_body += bytes([
-        len(topic_name) + 1
+        len(topics) + 1
     ])
 
-    response_body += topic_name
+    for topic_name in topics:
 
-    # topic_id UUID
-    response_body += topic_uuid
+        print("\n========== TOPIC RESPONSE ==========")
 
-    # is_internal
-    response_body += b"\x00"
+        print("TOPIC:", topic_name)
 
-    # =================================================
-    # PARTITIONS
-    # =================================================
+        # -------------------------------------------------
+        # Find topic UUID
+        # -------------------------------------------------
 
-    if error_code == 0:
+        topic_index = metadata.find(topic_name)
 
-        partitions = extract_partitions(
-                    metadata,
-                    topic_uuid
-                )
+        if topic_index != -1:
+
+            error_code = 0
+
+            print("TOPIC FOUND")
+
+            uuid_start = (
+                topic_index +
+                len(topic_name)
+            )
+
+            topic_uuid = metadata[
+                uuid_start:
+                uuid_start + 16
+            ]
+
+            partitions = extract_partitions(
+                metadata,
+                topic_uuid
+            )
+
+        else:
+
+            print("TOPIC NOT FOUND")
+
+            error_code = 3
+
+            topic_uuid = b"\x00" * 16
+
+            partitions = []
+
+        print("ERROR CODE:", error_code)
+
+        print("UUID:", topic_uuid.hex())
+
+        print("PARTITIONS:", partitions)
+
+        # -------------------------------------------------
+        # Topic Error Code
+        # -------------------------------------------------
+
+        response_body += error_code.to_bytes(
+            2,
+            "big"
+        )
+
+        # -------------------------------------------------
+        # Topic Name
+        # -------------------------------------------------
+
+        response_body += bytes([
+            len(topic_name) + 1
+        ])
+
+        response_body += topic_name
+
+        # -------------------------------------------------
+        # Topic UUID
+        # -------------------------------------------------
+
+        response_body += topic_uuid
+
+        # -------------------------------------------------
+        # is_internal
+        # -------------------------------------------------
+
+        response_body += b"\x00"
+
+        # -------------------------------------------------
+        # partitions array
+        # -------------------------------------------------
 
         response_body += bytes([
             len(partitions) + 1
@@ -271,26 +333,30 @@ def build_describe_topic_partitions_response(
 
         for partition_index in partitions:
 
+            print(
+                f"SERIALIZING PARTITION "
+                f"{partition_index}"
+            )
+
             response_body += serialize_partition(
                 partition_index
             )
 
-    else:
+        # -------------------------------------------------
+        # topic_authorized_operations
+        # -------------------------------------------------
 
-        # empty partitions array
-        response_body += b"\x01"
+        response_body += (0).to_bytes(
+            4,
+            "big"
+        )
 
-    # topic_authorized_operations
-    response_body += (0).to_bytes(4, "big")
+        # -------------------------------------------------
+        # TAG_BUFFER
+        # -------------------------------------------------
 
-    # TAG_BUFFER
-    response_body += b"\x00"
-
-    # next_cursor = null
-    response_body += b"\xff"
-
-    # final TAG_BUFFER
-    response_body += b"\x00"
+        response_body += b"\x00"
+    
 
     # -------------------------------------------------
     # Response Header v1
@@ -308,6 +374,19 @@ def build_describe_topic_partitions_response(
         + response_header
         + response_body
     )
+    print("\n========== FINAL RESPONSE ==========")
+
+    print("HEADER SIZE:", len(response_header))
+
+    print("BODY SIZE:", len(response_body))
+
+    print("MESSAGE SIZE:", message_size)
+
+    print("RESPONSE HEX:")
+
+    print(response.hex())
+
+    print("====================================\n")
 
     return response
 
@@ -316,28 +395,29 @@ def build_describe_topic_partitions_response(
 # Parse Topic Name Properly
 # =========================================================
 
-def parse_topic_name(request):
+# =========================================================
+# Parse Multiple Topics
+# =========================================================
 
-    # -------------------------------------------------
-    # Start after request header
-    # -------------------------------------------------
+def parse_topics(request):
+
+    print("\n========== PARSE TOPICS ==========")
 
     cursor = 0
 
-    # message_size
-    cursor += 4
+    # -------------------------------------------------
+    # Request Header
+    # -------------------------------------------------
 
-    # api_key
-    cursor += 2
+    cursor += 4  # message_size
+    cursor += 2  # api_key
+    cursor += 2  # api_version
+    cursor += 4  # correlation_id
 
-    # api_version
-    cursor += 2
-
-    # correlation_id
-    cursor += 4
+    print("AFTER FIXED HEADER:", cursor)
 
     # -------------------------------------------------
-    # client_id (NULLABLE_STRING)
+    # client_id
     # -------------------------------------------------
 
     client_id_length = int.from_bytes(
@@ -345,36 +425,88 @@ def parse_topic_name(request):
         "big"
     )
 
+    print("CLIENT ID LENGTH:", client_id_length)
+
     cursor += 2
 
     if client_id_length > 0:
+
+        client_id = request[
+            cursor:
+            cursor + client_id_length
+        ]
+
+        print("CLIENT ID:", client_id)
+
         cursor += client_id_length
 
+    print("AFTER CLIENT ID:", cursor)
+
     # -------------------------------------------------
-    # TAG_BUFFER
+    # Request Header TAG_BUFFER
     # -------------------------------------------------
+
+    tag_buffer = request[cursor]
+
+    print("HEADER TAG BUFFER:", tag_buffer)
 
     cursor += 1
 
     # -------------------------------------------------
-    # topics COMPACT_ARRAY
+    # Topics COMPACT_ARRAY
     # -------------------------------------------------
+
+    topics_count = request[cursor] - 1
+
+    print("TOPICS COUNT:", topics_count)
 
     cursor += 1
 
+    topics = []
+
     # -------------------------------------------------
-    # topic_name COMPACT_STRING
+    # Parse each topic
     # -------------------------------------------------
 
-    topic_length = request[cursor] - 1
+    for i in range(topics_count):
 
-    cursor += 1
+        print(f"\n--- TOPIC {i} ---")
 
-    topic_name = request[
-        cursor:cursor + topic_length
-    ]
+        topic_length = request[cursor] - 1
 
-    return topic_name
+        print("TOPIC LENGTH:", topic_length)
+
+        cursor += 1
+
+        topic_name = request[
+            cursor:
+            cursor + topic_length
+        ]
+
+        print("TOPIC NAME:", topic_name)
+
+        cursor += topic_length
+
+        # topic TAG_BUFFER
+        topic_tag = request[cursor]
+
+        print("TOPIC TAG BUFFER:", topic_tag)
+
+        cursor += 1
+
+        topics.append(topic_name)
+
+    print("\nTOPICS BEFORE SORT:")
+    print(topics)
+
+    topics.sort()
+
+    print("\nTOPICS AFTER SORT:")
+    print(topics)
+
+    print("\n==================================\n")
+
+    return topics
 
 
 # =========================================================
@@ -427,14 +559,14 @@ def handle_client(conn):
 
             elif api_key == 75:
 
-                topic_name = parse_topic_name(
+                topics = parse_topics(
                     request
                 )
 
                 response = (
                     build_describe_topic_partitions_response(
                         correlation_id,
-                        topic_name
+                        topics
                     )
                 )
 
