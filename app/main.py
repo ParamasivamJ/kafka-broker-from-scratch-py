@@ -8,33 +8,21 @@ import threading
 
 def build_apiversions_response(correlation_id, api_version):
 
-    # -----------------------------------------
-    # Error code
-    # -----------------------------------------
-
     if 0 <= api_version <= 4:
         error_code = 0
     else:
         error_code = 35
-
-    # -----------------------------------------
-    # Response body
-    # -----------------------------------------
 
     response_body = b""
 
     # error_code
     response_body += error_code.to_bytes(2, "big")
 
-    # COMPACT_ARRAY with 2 entries
-    # length stored as N + 1
+    # COMPACT_ARRAY => 2 elements
     response_body += b"\x03"
 
     # -----------------------------------------
     # ApiVersions API
-    # api_key = 18
-    # min_version = 0
-    # max_version = 4
     # -----------------------------------------
 
     response_body += (18).to_bytes(2, "big")
@@ -44,9 +32,6 @@ def build_apiversions_response(correlation_id, api_version):
 
     # -----------------------------------------
     # DescribeTopicPartitions API
-    # api_key = 75
-    # min_version = 0
-    # max_version = 0
     # -----------------------------------------
 
     response_body += (75).to_bytes(2, "big")
@@ -57,18 +42,19 @@ def build_apiversions_response(correlation_id, api_version):
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
 
-    # final TAG_BUFFER
+    # TAG_BUFFER
     response_body += b"\x00"
 
     # -----------------------------------------
     # Response Header v0
-    # correlation_id only
     # -----------------------------------------
 
     response_header = correlation_id
 
-    # message_size excludes first 4 bytes
-    message_size = len(response_header) + len(response_body)
+    message_size = (
+        len(response_header) +
+        len(response_body)
+    )
 
     response = (
         message_size.to_bytes(4, "big")
@@ -90,29 +76,19 @@ def build_describe_topic_partitions_response(
 
     response_body = b""
 
-    # -----------------------------------------
     # throttle_time_ms
-    # -----------------------------------------
-
     response_body += (0).to_bytes(4, "big")
 
-    # -----------------------------------------
     # topics COMPACT_ARRAY
-    # 1 topic => 2
-    # -----------------------------------------
-
+    # 1 topic => stored as 2
     response_body += b"\x02"
 
-    # -----------------------------------------
-    # error_code = 3
-    # UNKNOWN_TOPIC_OR_PARTITION
-    # -----------------------------------------
-
+    # error_code = UNKNOWN_TOPIC_OR_PARTITION
     response_body += (3).to_bytes(2, "big")
 
-    # -----------------------------------------
-    # topic_name COMPACT_STRING
-    # -----------------------------------------
+    # -------------------------------------------------
+    # COMPACT_STRING topic_name
+    # -------------------------------------------------
 
     topic_length = len(topic_name)
 
@@ -120,58 +96,37 @@ def build_describe_topic_partitions_response(
 
     response_body += topic_name
 
-    # -----------------------------------------
-    # topic_id UUID (16 zero bytes)
-    # -----------------------------------------
-
+    # topic_id UUID = 16 zero bytes
     response_body += b"\x00" * 16
 
-    # -----------------------------------------
     # is_internal = false
-    # -----------------------------------------
-
     response_body += b"\x00"
 
-    # -----------------------------------------
-    # partitions COMPACT_ARRAY
-    # empty => 1
-    # -----------------------------------------
-
+    # partitions empty compact array
     response_body += b"\x01"
 
-    # -----------------------------------------
     # topic_authorized_operations
-    # -----------------------------------------
-
     response_body += (0).to_bytes(4, "big")
 
-    # -----------------------------------------
     # TAG_BUFFER
-    # -----------------------------------------
-
     response_body += b"\x00"
 
-    # -----------------------------------------
     # next_cursor = null
-    # nullable int8 => ff
-    # -----------------------------------------
-
     response_body += b"\xff"
 
-    # -----------------------------------------
     # final TAG_BUFFER
-    # -----------------------------------------
-
     response_body += b"\x00"
 
-    # =====================================================
+    # -------------------------------------------------
     # Response Header v1
-    # correlation_id + TAG_BUFFER
-    # =====================================================
+    # -------------------------------------------------
 
     response_header = correlation_id + b"\x00"
 
-    message_size = len(response_header) + len(response_body)
+    message_size = (
+        len(response_header) +
+        len(response_body)
+    )
 
     response = (
         message_size.to_bytes(4, "big")
@@ -180,6 +135,71 @@ def build_describe_topic_partitions_response(
     )
 
     return response
+
+
+# =========================================================
+# Parse Topic Name Properly
+# =========================================================
+
+def parse_topic_name(request):
+
+    # -------------------------------------------------
+    # Start after request header
+    # -------------------------------------------------
+
+    cursor = 0
+
+    # message_size
+    cursor += 4
+
+    # api_key
+    cursor += 2
+
+    # api_version
+    cursor += 2
+
+    # correlation_id
+    cursor += 4
+
+    # -------------------------------------------------
+    # client_id (NULLABLE_STRING)
+    # -------------------------------------------------
+
+    client_id_length = int.from_bytes(
+        request[cursor:cursor + 2],
+        "big"
+    )
+
+    cursor += 2
+
+    if client_id_length > 0:
+        cursor += client_id_length
+
+    # -------------------------------------------------
+    # TAG_BUFFER
+    # -------------------------------------------------
+
+    cursor += 1
+
+    # -------------------------------------------------
+    # topics COMPACT_ARRAY
+    # -------------------------------------------------
+
+    cursor += 1
+
+    # -------------------------------------------------
+    # topic_name COMPACT_STRING
+    # -------------------------------------------------
+
+    topic_length = request[cursor] - 1
+
+    cursor += 1
+
+    topic_name = request[
+        cursor:cursor + topic_length
+    ]
+
+    return topic_name
 
 
 # =========================================================
@@ -197,9 +217,9 @@ def handle_client(conn):
             if not request:
                 break
 
-            # -----------------------------------------
-            # Parse common header fields
-            # -----------------------------------------
+            # -------------------------------------------------
+            # Common Header
+            # -------------------------------------------------
 
             api_key = int.from_bytes(
                 request[4:6],
@@ -213,9 +233,9 @@ def handle_client(conn):
 
             correlation_id = request[8:12]
 
-            # =====================================================
-            # ApiVersions API
-            # =====================================================
+            # =================================================
+            # ApiVersions
+            # =================================================
 
             if api_key == 18:
 
@@ -226,21 +246,15 @@ def handle_client(conn):
 
                 conn.sendall(response)
 
-            # =====================================================
-            # DescribeTopicPartitions API
-            # =====================================================
+            # =================================================
+            # DescribeTopicPartitions
+            # =================================================
 
             elif api_key == 75:
 
-                # -----------------------------------------
-                # Parse topic name
-                # -----------------------------------------
-
-                topic_length = request[27] - 1
-
-                topic_name = request[
-                    28:28 + topic_length
-                ]
+                topic_name = parse_topic_name(
+                    request
+                )
 
                 response = (
                     build_describe_topic_partitions_response(
@@ -261,7 +275,7 @@ def handle_client(conn):
 
 
 # =========================================================
-# Main Server
+# Main
 # =========================================================
 
 def main():
