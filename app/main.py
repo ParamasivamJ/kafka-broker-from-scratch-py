@@ -74,28 +74,89 @@ def extract_partitions(metadata, topic_uuid):
 
     uuid_index = metadata.find(topic_uuid)
 
+    print("\n========== PARTITION DEBUG ==========")
+
+    print("UUID INDEX:", uuid_index)
+
     if uuid_index == -1:
+
+        print("UUID NOT FOUND")
+
         return [0]
 
-    # -----------------------------------------
+    # -------------------------------------------------
     # Search AFTER UUID
-    # -----------------------------------------
+    # -------------------------------------------------
+
+    region_start = uuid_index + 16
+    region_end = uuid_index + 120
 
     region = metadata[
-        uuid_index + 16:
-        uuid_index + 120
+        region_start:
+        region_end
     ]
 
-    partitions = [0]
+    print("REGION START:", region_start)
+    print("REGION END:", region_end)
 
-    # -----------------------------------------
-    # Detect partition 1
-    # -----------------------------------------
+    print("\nRAW REGION HEX:")
+    print(region.hex())
 
-    if b"\x00\x00\x00\x01\x02" in region:
-        partitions.append(1)
+    # -------------------------------------------------
+    # Print 4-byte chunks
+    # -------------------------------------------------
 
-    return partitions
+    print("\n4-BYTE CHUNKS:")
+
+    for i in range(0, len(region), 4):
+
+        chunk = region[i:i+4]
+
+        if len(chunk) < 4:
+            break
+
+        value = int.from_bytes(
+            chunk,
+            "big"
+        )
+
+        print(
+            f"OFFSET {i:02d} | "
+            f"HEX {chunk.hex()} | "
+            f"INT {value}"
+        )
+
+    # -------------------------------------------------
+    # Detect partitions
+    # -------------------------------------------------
+
+    partitions = []
+
+    for i in range(0, len(region) - 4):
+
+        chunk = region[i:i+4]
+
+        value = int.from_bytes(
+            chunk,
+            "big"
+        )
+
+        # -------------------------------------------------
+        # Kafka partition IDs are usually small
+        # -------------------------------------------------
+
+        if value in [0, 1, 2, 3]:
+
+            print(
+                f"CANDIDATE PARTITION:"
+                f" offset={i}"
+                f" value={value}"
+            )
+
+    print("=====================================\n")
+
+    # TEMPORARY
+    return [0, 1]
 
 def serialize_partition(partition_index):
 
