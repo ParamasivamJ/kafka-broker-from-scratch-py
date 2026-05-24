@@ -74,36 +74,113 @@ def build_describe_topic_partitions_response(
     topic_name
 ):
 
+    # -------------------------------------------------
+    # Load metadata log
+    # -------------------------------------------------
+
+    metadata_path = (
+        "/tmp/kraft-combined-logs/"
+        "__cluster_metadata-0/"
+        "00000000000000000000.log"
+    )
+
+    with open(metadata_path, "rb") as f:
+        metadata = f.read()
+
+    # -------------------------------------------------
+    # Find topic UUID
+    # -------------------------------------------------
+
+    topic_index = metadata.find(topic_name)
+
+    if topic_index != -1:
+
+        error_code = 0
+
+        # Heuristic UUID extraction
+        topic_uuid = metadata[
+            topic_index - 16:topic_index
+        ]
+
+    else:
+
+        error_code = 3
+
+        topic_uuid = b"\x00" * 16
+
+    # -------------------------------------------------
+    # Build response body
+    # -------------------------------------------------
+
     response_body = b""
 
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
 
-    # topics COMPACT_ARRAY
-    # 1 topic => stored as 2
+    # topics compact array
     response_body += b"\x02"
 
-    # error_code = UNKNOWN_TOPIC_OR_PARTITION
-    response_body += (3).to_bytes(2, "big")
+    # topic error_code
+    response_body += error_code.to_bytes(2, "big")
 
-    # -------------------------------------------------
-    # COMPACT_STRING topic_name
-    # -------------------------------------------------
-
-    topic_length = len(topic_name)
-
-    response_body += bytes([topic_length + 1])
+    # topic_name compact string
+    response_body += bytes([
+        len(topic_name) + 1
+    ])
 
     response_body += topic_name
 
-    # topic_id UUID = 16 zero bytes
-    response_body += b"\x00" * 16
+    # topic_id UUID
+    response_body += topic_uuid
 
-    # is_internal = false
+    # is_internal
     response_body += b"\x00"
 
-    # partitions empty compact array
-    response_body += b"\x01"
+    # =================================================
+    # PARTITIONS
+    # =================================================
+
+    if error_code == 0:
+
+        # 1 partition
+        response_body += b"\x02"
+
+        # partition error_code
+        response_body += (0).to_bytes(2, "big")
+
+        # partition_index
+        response_body += (0).to_bytes(4, "big")
+
+        # leader_id
+        response_body += (1).to_bytes(4, "big")
+
+        # leader_epoch
+        response_body += (0).to_bytes(4, "big")
+
+        # replica_nodes array
+        response_body += b"\x02"
+        response_body += (1).to_bytes(4, "big")
+
+        # isr_nodes array
+        response_body += b"\x02"
+        response_body += (1).to_bytes(4, "big")
+
+        # eligible_leader_replicas
+        response_body += b"\x01"
+
+        # last_known_elr
+        response_body += b"\x01"
+
+        # offline_replicas
+        response_body += b"\x01"
+
+        # TAG_BUFFER
+        response_body += b"\x00"
+
+    else:
+
+        # empty partitions array
+        response_body += b"\x01"
 
     # topic_authorized_operations
     response_body += (0).to_bytes(4, "big")
