@@ -86,29 +86,17 @@ def extract_partitions(metadata, topic_uuid):
         uuid_index + 120
     ]
 
-    partitions = []
+    partitions = [0]
 
     # -----------------------------------------
-    # Partition 0 always exists
+    # Detect partition 1
     # -----------------------------------------
 
-    if b"\x00\x00\x00\x00" in region:
-        partitions.append(0)
-
-    # -----------------------------------------
-    # Detect REAL partition 1
-    # -----------------------------------------
-
-    partition_one_count = region.count(
-        b"\x00\x00\x00\x01"
-    )
-
-    # Multiple occurrences strongly indicate
-    # actual second partition metadata
-    if partition_one_count >= 2:
+    if b"\x00\x00\x00\x01\x02" in region:
         partitions.append(1)
 
     return partitions
+
 def serialize_partition(partition_index):
 
     data = b""
