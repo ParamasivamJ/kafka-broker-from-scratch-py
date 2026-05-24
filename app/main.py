@@ -191,40 +191,7 @@ def build_describe_topic_partitions_response(
     with open(metadata_path, "rb") as f:
         metadata = f.read()
 
-    # -------------------------------------------------
-    # Find topic UUID
-    # -------------------------------------------------
-
-    topic_index = metadata.find(topic_name)
-
-    if topic_index != -1:
-
-        error_code = 0
-
-        print("TOPIC FOUND:", topic_name)
-        print("TOPIC INDEX:", topic_index)
-
-        start = max(0, topic_index - 64)
-        end = topic_index + 64
-
-        print(metadata[start:end].hex())
-
-        # -------------------------------------------------
-        # UUID starts immediately after topic name
-        # -------------------------------------------------
-
-        uuid_start = topic_index + len(topic_name)
-
-        topic_uuid = metadata[
-            uuid_start:
-            uuid_start + 16
-        ]
-
-    else:
-
-        error_code = 3
-
-        topic_uuid = b"\x00" * 16
+    
 
     # -------------------------------------------------
     # Build response body
@@ -355,6 +322,11 @@ def build_describe_topic_partitions_response(
         # TAG_BUFFER
         # -------------------------------------------------
 
+        response_body += b"\x00"
+        # next_cursor => null
+        response_body += b"\xff"
+
+        # final TAG_BUFFER
         response_body += b"\x00"
     
 
