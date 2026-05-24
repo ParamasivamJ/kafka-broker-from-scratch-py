@@ -72,45 +72,42 @@ def build_apiversions_response(correlation_id, api_version):
 
 def extract_partitions(metadata, topic_uuid):
 
-    partitions = []
-
-    # -------------------------------------------------
-    # Find UUID position
-    # -------------------------------------------------
-
     uuid_index = metadata.find(topic_uuid)
 
     if uuid_index == -1:
         return [0]
 
-    # -------------------------------------------------
-    # Search nearby region
-    # -------------------------------------------------
-
-    start = uuid_index
-    end = min(len(metadata), uuid_index + 200)
-
-    region = metadata[start:end]
+    region = metadata[
+        uuid_index:
+        uuid_index + 200
+    ]
 
     # -------------------------------------------------
-    # Detect partition 0
+    # Count partition patterns
     # -------------------------------------------------
 
-    if b"\x00\x00\x00\x00" in region:
+    has_partition_0 = (
+        b"\x00\x00\x00\x00" in region
+    )
+
+    partition_1_count = region.count(
+        b"\x00\x00\x00\x01"
+    )
+
+    partitions = []
+
+    if has_partition_0:
         partitions.append(0)
 
     # -------------------------------------------------
-    # Detect partition 1
+    # Multiple appearances strongly suggest
+    # actual partition 1 metadata
     # -------------------------------------------------
 
-    if b"\x00\x00\x00\x01" in region:
+    if partition_1_count >= 3:
         partitions.append(1)
 
-    # fallback
-    if not partitions:
-        partitions = [0]
-
-    return sorted(set(partitions))
+    return partitions or [0]
 
 def serialize_partition(partition_index):
 
