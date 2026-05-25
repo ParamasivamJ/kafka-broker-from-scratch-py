@@ -202,7 +202,7 @@ def build_describe_topic_partitions_response(
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
 
-        # =================================================
+    # =================================================
     # TOPICS ARRAY
     # =================================================
 
@@ -323,11 +323,12 @@ def build_describe_topic_partitions_response(
         # -------------------------------------------------
 
         response_body += b"\x00"
-        # next_cursor => null
-        response_body += b"\xff"
+        
+    # next_cursor => null
+    response_body += b"\xff"
 
-        # final TAG_BUFFER
-        response_body += b"\x00"
+    # final TAG_BUFFER
+    response_body += b"\x00"
     
 
     # -------------------------------------------------
