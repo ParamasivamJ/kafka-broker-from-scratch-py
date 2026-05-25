@@ -65,30 +65,67 @@ def build_apiversions_response(correlation_id, api_version):
 
 def extract_partitions(metadata, topic_uuid):
 
-    partitions = set()
+    partitions = []
 
     search_start = 0
 
     while True:
-        uuid_index = metadata.find(topic_uuid, search_start)
+
+        # -----------------------------------------
+        # Find next UUID occurrence
+        # -----------------------------------------
+
+        uuid_index = metadata.find(
+            topic_uuid,
+            search_start
+        )
+
         if uuid_index == -1:
             break
 
-        # ONLY check immediate structured region
-        region = metadata[uuid_index - 16 : uuid_index + 16]
+        # -----------------------------------------
+        # Partition ID is 4 bytes BEFORE UUID
+        # -----------------------------------------
 
-        # partitions are typically stored as single byte or small structured ints
-        for i in range(len(region)):
-            val = region[i]
+        if uuid_index >= 4:
 
-            # strict filter: partition IDs are usually small sequential numbers
-            if val < 10:
-                partitions.add(val)
+            partition_bytes = metadata[
+                uuid_index - 4:
+                uuid_index
+            ]
 
+            partition_id = int.from_bytes(
+                partition_bytes,
+                "big"
+            )
+
+            # Avoid garbage values
+            if 0 <= partition_id <= 100:
+
+                print(
+                    f"FOUND PARTITION:"
+                    f" {partition_id}"
+                )
+
+                partitions.append(
+                    partition_id
+                )
+
+        # Continue searching
         search_start = uuid_index + 16
 
-    # IMPORTANT: if nothing found, fallback is 0 only
-    return sorted(partitions) if partitions else [0]
+    # Remove duplicates
+    partitions = sorted(
+        list(set(partitions))
+    )
+
+    print("FINAL PARTITIONS:", partitions)
+
+    # Fallback
+    if not partitions:
+        return [0]
+
+    return partitions
 
 def serialize_partition(partition_index):
 
