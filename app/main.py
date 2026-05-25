@@ -1,6 +1,8 @@
+import sys
+import os
 import socket
 import threading
-
+sys.path.append(os.path.dirname(__file__))
 from parsing import parse_topics
 from protocol import (
     build_apiversions_response,
