@@ -31,6 +31,14 @@ def build_apiversions_response(correlation_id, api_version):
     response_body += b"\x00"
 
     # -----------------------------------------
+    # Fetch API (1)   <-- REQUIRED FIX
+    # -----------------------------------------
+    response_body += (1).to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
+    response_body += (16).to_bytes(2, "big")
+    response_body += b"\x00"
+    
+    # -----------------------------------------
     # DescribeTopicPartitions API
     # -----------------------------------------
 
