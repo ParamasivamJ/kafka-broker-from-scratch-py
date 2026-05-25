@@ -8,6 +8,9 @@ from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
 )
+from fetch_handler import (
+    build_fetch_response
+)
 
 
 def handle_client(conn):
@@ -36,6 +39,18 @@ def handle_client(conn):
                     correlation_id,
                     topics,
                 )
+                conn.sendall(response)
+            
+            elif api_key == 1:
+
+                print("\n========== FETCH REQUEST ==========")
+
+                print("FETCH API VERSION:", api_version)
+
+                response = build_fetch_response(
+                    correlation_id
+                )
+
                 conn.sendall(response)
 
         except Exception as e:
