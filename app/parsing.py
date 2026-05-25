@@ -145,18 +145,70 @@ def parse_fetch_topic_id(request):
     cursor += 1
 
     # -------------------------------------------------
-    # Skip Fetch fields before topics
+    # Fetch request fields (v16)
     # -------------------------------------------------
 
-    cursor += 4   # replica_id
-    cursor += 4   # max_wait_ms
-    cursor += 4   # min_bytes
-    cursor += 4   # max_bytes
-    cursor += 1   # isolation_level
-    cursor += 4   # session_id
-    cursor += 4   # session_epoch
-    # tagged fields
+    replica_id = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big",
+        signed=True
+    )
+
+    print("REPLICA ID:", replica_id)
+
+    cursor += 4
+
+    max_wait_ms = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big"
+    )
+
+    print("MAX WAIT MS:", max_wait_ms)
+
+    cursor += 4
+
+    min_bytes = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big"
+    )
+
+    print("MIN BYTES:", min_bytes)
+
+    cursor += 4
+
+    max_bytes = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big",
+        signed=True
+    )
+
+    print("MAX BYTES:", max_bytes)
+
+    cursor += 4
+
+    isolation_level = request[cursor]
+
+    print("ISOLATION LEVEL:", isolation_level)
+
     cursor += 1
+
+    session_id = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big"
+    )
+
+    print("SESSION ID:", session_id)
+
+    cursor += 4
+
+    session_epoch = int.from_bytes(
+        request[cursor:cursor + 4],
+        "big"
+    )
+
+    print("SESSION EPOCH:", session_epoch)
+
+    cursor += 4
 
     print("AFTER FETCH HEADER:", cursor)
 
@@ -164,11 +216,11 @@ def parse_fetch_topic_id(request):
     # topics compact array
     # -------------------------------------------------
 
-    topics_array_length = request[cursor]
+    topics_array_raw = request[cursor]
 
-    print("TOPICS ARRAY RAW:", topics_array_length)
+    print("TOPICS ARRAY RAW:", topics_array_raw)
 
-    topics_count = topics_array_length - 1
+    topics_count = topics_array_raw - 1
 
     print("TOPICS COUNT:", topics_count)
 
@@ -177,6 +229,15 @@ def parse_fetch_topic_id(request):
     # -------------------------------------------------
     # topic_id
     # -------------------------------------------------
+    #
+    # IMPORTANT:
+    # We were off by 1 byte earlier because
+    # compact array length consumed only 1 byte.
+    #
+    # Actual UUID starts immediately here.
+    # -------------------------------------------------
+
+    print("UUID START OFFSET:", cursor)
 
     topic_id = request[
         cursor:
@@ -187,7 +248,23 @@ def parse_fetch_topic_id(request):
 
     print(topic_id.hex())
 
-    print("UUID OFFSET:", cursor)
+    # -------------------------------------------------
+    # Pretty UUID formatting debug
+    # -------------------------------------------------
+
+    uuid_hex = topic_id.hex()
+
+    pretty_uuid = (
+        f"{uuid_hex[0:8]}-"
+        f"{uuid_hex[8:12]}-"
+        f"{uuid_hex[12:16]}-"
+        f"{uuid_hex[16:20]}-"
+        f"{uuid_hex[20:32]}"
+    )
+
+    print("FORMATTED UUID:")
+
+    print(pretty_uuid)
 
     print("========================================\n")
 
