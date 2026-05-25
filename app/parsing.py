@@ -155,6 +155,8 @@ def parse_fetch_topic_id(request):
     cursor += 1   # isolation_level
     cursor += 4   # session_id
     cursor += 4   # session_epoch
+    # tagged fields
+    cursor += 1
 
     print("AFTER FETCH HEADER:", cursor)
 
