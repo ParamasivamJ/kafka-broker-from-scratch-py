@@ -8,18 +8,31 @@ import threading
 
 def build_apiversions_response(correlation_id, api_version):
 
-    # error_code = 0
+    error_code = 0 if 0 <= api_version <= 4 else 35
+
     response_body = b""
-    response_body += (0).to_bytes(2, "big")
 
-    # api_keys COMPACT_ARRAY (1 element → encoded as 2)
-    response_body += b"\x02"
+    # error_code
+    response_body += error_code.to_bytes(2, "big")
 
-    # API key 18 (ApiVersions)
+    # 2 APIs → compact array length = 2 + 1 = 3
+    response_body += b"\x03"
+
+    # -------------------------
+    # API 18 (ApiVersions)
+    # -------------------------
     response_body += (18).to_bytes(2, "big")
-    response_body += (0).to_bytes(2, "big")  # min_version
-    response_body += (4).to_bytes(2, "big")  # max_version
-    response_body += b"\x00"  # TAG_BUFFER
+    response_body += (0).to_bytes(2, "big")
+    response_body += (4).to_bytes(2, "big")
+    response_body += b"\x00"
+
+    # -------------------------
+    # API 75 (DescribeTopicPartitions)
+    # -------------------------
+    response_body += (75).to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
+    response_body += b"\x00"
 
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
@@ -27,8 +40,8 @@ def build_apiversions_response(correlation_id, api_version):
     # final TAG_BUFFER
     response_body += b"\x00"
 
-    # header (correlation id + tagged fields byte)
-    response_header = correlation_id + b"\x00"
+    # header (correlation id unchanged)
+    response_header = correlation_id
 
     message_size = len(response_header) + len(response_body)
 
