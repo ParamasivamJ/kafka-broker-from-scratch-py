@@ -90,9 +90,9 @@ def parse_fetch_topic_id(request):
             f"{chunk.hex()}"
         )
 
-    # -------------------------------------------------
-    # Parse request step-by-step
-    # -------------------------------------------------
+    # =================================================
+    # PARSE REQUEST HEADER
+    # =================================================
 
     cursor = 0
 
@@ -103,12 +103,19 @@ def parse_fetch_topic_id(request):
     cursor += 2
 
     # api_version
+    api_version = int.from_bytes(
+        request[6:8],
+        "big"
+    )
+
     cursor += 2
+
+    print("\nFETCH API VERSION:", api_version)
 
     # correlation_id
     cursor += 4
 
-    print("\nAFTER FIXED HEADER:", cursor)
+    print("AFTER FIXED HEADER:", cursor)
 
     # -------------------------------------------------
     # client_id
@@ -144,22 +151,36 @@ def parse_fetch_topic_id(request):
 
     cursor += 1
 
+    # =================================================
+    # FETCH REQUEST BODY
+    # =================================================
+
+    body_start = cursor
+
+    print("\nBODY START:", body_start)
+
     # -------------------------------------------------
-    # Fetch request fields (v16)
+    # ReplicaId exists only <= v14
     # -------------------------------------------------
 
-    replica_id = int.from_bytes(
-        request[cursor:cursor + 4],
-        "big",
-        signed=True
-    )
+    if api_version <= 14:
 
-    print("REPLICA ID:", replica_id)
+        replica_id = int.from_bytes(
+            request[cursor:cursor+4],
+            "big",
+            signed=True
+        )
 
-    cursor += 4
+        print("REPLICA ID:", replica_id)
+
+        cursor += 4
+
+    # -------------------------------------------------
+    # MaxWaitMs
+    # -------------------------------------------------
 
     max_wait_ms = int.from_bytes(
-        request[cursor:cursor + 4],
+        request[cursor:cursor+4],
         "big"
     )
 
@@ -167,8 +188,12 @@ def parse_fetch_topic_id(request):
 
     cursor += 4
 
+    # -------------------------------------------------
+    # MinBytes
+    # -------------------------------------------------
+
     min_bytes = int.from_bytes(
-        request[cursor:cursor + 4],
+        request[cursor:cursor+4],
         "big"
     )
 
@@ -176,8 +201,12 @@ def parse_fetch_topic_id(request):
 
     cursor += 4
 
+    # -------------------------------------------------
+    # MaxBytes
+    # -------------------------------------------------
+
     max_bytes = int.from_bytes(
-        request[cursor:cursor + 4],
+        request[cursor:cursor+4],
         "big",
         signed=True
     )
@@ -186,14 +215,22 @@ def parse_fetch_topic_id(request):
 
     cursor += 4
 
+    # -------------------------------------------------
+    # IsolationLevel
+    # -------------------------------------------------
+
     isolation_level = request[cursor]
 
     print("ISOLATION LEVEL:", isolation_level)
 
     cursor += 1
 
+    # -------------------------------------------------
+    # SessionId
+    # -------------------------------------------------
+
     session_id = int.from_bytes(
-        request[cursor:cursor + 4],
+        request[cursor:cursor+4],
         "big"
     )
 
@@ -201,8 +238,12 @@ def parse_fetch_topic_id(request):
 
     cursor += 4
 
+    # -------------------------------------------------
+    # SessionEpoch
+    # -------------------------------------------------
+
     session_epoch = int.from_bytes(
-        request[cursor:cursor + 4],
+        request[cursor:cursor+4],
         "big"
     )
 
@@ -212,9 +253,9 @@ def parse_fetch_topic_id(request):
 
     print("AFTER FETCH HEADER:", cursor)
 
-    # -------------------------------------------------
-    # topics compact array
-    # -------------------------------------------------
+    # =================================================
+    # TOPICS ARRAY
+    # =================================================
 
     topics_array_raw = request[cursor]
 
@@ -227,45 +268,54 @@ def parse_fetch_topic_id(request):
     cursor += 1
 
     # -------------------------------------------------
-    # topic_id
-    # -------------------------------------------------
-    #
-    # IMPORTANT:
-    # We were off by 1 byte earlier because
-    # compact array length consumed only 1 byte.
-    #
-    # Actual UUID starts immediately here.
+    # Validate topic count
     # -------------------------------------------------
 
-    print("UUID START OFFSET:", cursor)
+    if topics_count <= 0:
+
+        print("NO TOPICS FOUND")
+
+        return b"\x00" * 16
+
+    # =================================================
+    # TOPIC UUID
+    # =================================================
 
     topic_id = request[
         cursor:
         cursor + 16
     ]
 
-    print("TOPIC UUID FOUND:")
+    print("\nTOPIC UUID FOUND:")
 
     print(topic_id.hex())
 
-    # -------------------------------------------------
-    # Pretty UUID formatting debug
-    # -------------------------------------------------
+    print("UUID OFFSET:", cursor)
 
-    uuid_hex = topic_id.hex()
+    cursor += 16
 
-    pretty_uuid = (
-        f"{uuid_hex[0:8]}-"
-        f"{uuid_hex[8:12]}-"
-        f"{uuid_hex[12:16]}-"
-        f"{uuid_hex[16:20]}-"
-        f"{uuid_hex[20:32]}"
-    )
+    # =================================================
+    # PARTITIONS ARRAY
+    # =================================================
 
-    print("FORMATTED UUID:")
+    partitions_raw = request[cursor]
 
-    print(pretty_uuid)
+    print("\nPARTITIONS ARRAY RAW:", partitions_raw)
 
-    print("========================================\n")
+    partitions_count = partitions_raw - 1
+
+    print("PARTITIONS COUNT:", partitions_count)
+
+    cursor += 1
+
+    print("\n========== FINAL FETCH PARSE ==========")
+
+    print("FINAL CURSOR:", cursor)
+
+    print("REMAINING BYTES:")
+
+    print(request[cursor:].hex())
+
+    print("=======================================\n")
 
     return topic_id
