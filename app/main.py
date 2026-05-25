@@ -8,10 +8,12 @@ import threading
 
 def build_apiversions_response(correlation_id, api_version):
 
+    error_code = 0 if 0 <= api_version <= 4 else 35
+
     response_body = b""
 
     # error_code
-    response_body += (0).to_bytes(2, "big")
+    response_body += error_code.to_bytes(2, "big")
 
     # 3 APIs → compact array = 3 + 1 = 4
     response_body += b"\x04"
