@@ -1,8 +1,5 @@
-try:
-    from .kafka_server import main
-except ImportError:
-    from kafka_server import main
+﻿from kafka_server import main
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
+
