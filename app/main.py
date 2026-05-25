@@ -64,31 +64,30 @@ def build_apiversions_response(correlation_id, api_version):
 # =========================================================
 
 def extract_partitions(metadata, topic_uuid):
+
     partitions = set()
 
-    start = 0
+    search_start = 0
 
     while True:
-        uuid_index = metadata.find(topic_uuid, start)
+        uuid_index = metadata.find(topic_uuid, search_start)
         if uuid_index == -1:
             break
 
-        # restrict backward search window (IMPORTANT FIX)
-        window_start = max(0, uuid_index - 64)
+        # ONLY check immediate structured region
+        region = metadata[uuid_index - 16 : uuid_index + 16]
 
-        # scan ONLY in local region
-        chunk = metadata[window_start: uuid_index]
+        # partitions are typically stored as single byte or small structured ints
+        for i in range(len(region)):
+            val = region[i]
 
-        # try to extract 4-byte aligned integers safely
-        for i in range(len(chunk) - 3):
-            candidate = chunk[i:i+4]
-            val = int.from_bytes(candidate, "big")
-
-            if 0 <= val <= 100:
+            # strict filter: partition IDs are usually small sequential numbers
+            if val < 10:
                 partitions.add(val)
 
-        start = uuid_index + 16
+        search_start = uuid_index + 16
 
+    # IMPORTANT: if nothing found, fallback is 0 only
     return sorted(partitions) if partitions else [0]
 
 def serialize_partition(partition_index):
