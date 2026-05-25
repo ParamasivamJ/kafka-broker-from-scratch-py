@@ -53,27 +53,66 @@ def extract_partitions(metadata, topic_uuid):
     return partitions
 
 
-def find_topic_metadata(metadata, topic_name):
-    topic_index = metadata.find(topic_name)
+def find_topic_metadata(
+    metadata,
+    topic_name
+):
 
-    if topic_index != -1:
-        print("TOPIC FOUND:", topic_name)
-        print("TOPIC INDEX:", topic_index)
+    print("\n========== FIND TOPIC ==========")
 
-        start = max(0, topic_index - 64)
-        end = topic_index + 64
-        print(metadata[start:end].hex())
+    print("TOPIC:", topic_name)
 
-        # Keep the same logic as the current implementation
-        uuid_start = topic_index + len(topic_name)
+    # -------------------------------------------------
+    # Compact string encoding
+    #
+    # length + 1
+    # -------------------------------------------------
 
-        topic_uuid = metadata[uuid_start:uuid_start + 16]
-        partitions = extract_partitions(metadata, topic_uuid)
-        error_code = 0
-    else:
-        print("TOPIC NOT FOUND:", topic_name)
-        topic_uuid = b"\x00" * 16
-        partitions = []
-        error_code = 3
+    encoded_topic = (
+        bytes([len(topic_name) + 1]) +
+        topic_name
+    )
 
-    return error_code, topic_uuid, partitions
+    print("ENCODED TOPIC:")
+
+    print(encoded_topic.hex())
+
+    # -------------------------------------------------
+    # Find exact encoded topic
+    # -------------------------------------------------
+
+    topic_index = metadata.find(
+        encoded_topic
+    )
+
+    print("TOPIC INDEX:", topic_index)
+
+    if topic_index == -1:
+
+        print("TOPIC NOT FOUND")
+
+        print("================================\n")
+
+        return None
+
+    # -------------------------------------------------
+    # UUID comes AFTER encoded topic
+    # -------------------------------------------------
+
+    uuid_start = (
+        topic_index +
+        len(encoded_topic)
+    )
+
+    topic_uuid = metadata[
+        uuid_start:
+        uuid_start + 16
+    ]
+
+    print("UUID:", topic_uuid.hex())
+
+    print("================================\n")
+
+    return {
+        "uuid": topic_uuid
+    }

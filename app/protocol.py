@@ -1,4 +1,4 @@
-from metadata_utils import load_metadata, find_topic_metadata
+from metadata_utils import load_metadata, find_topic_metadata,extract_partitions
 
 
 def build_apiversions_response(correlation_id, api_version):
@@ -83,14 +83,29 @@ def build_describe_topic_partitions_response(correlation_id, topics):
         print("\n========== TOPIC RESPONSE ==========")
         print("TOPIC:", topic_name)
 
-        error_code, topic_uuid, partitions = find_topic_metadata(
+        topic_metadata = find_topic_metadata(
             metadata,
-            topic_name,
+            topic_name
         )
 
-        print("ERROR CODE:", error_code)
-        print("UUID:", topic_uuid.hex())
-        print("PARTITIONS:", partitions)
+        if topic_metadata:
+
+            error_code = 0
+
+            topic_uuid = topic_metadata["uuid"]
+
+            partitions = extract_partitions(
+                metadata,
+                topic_uuid
+            )
+
+        else:
+
+            error_code = 3
+
+            topic_uuid = b"\x00" * 16
+
+            partitions = []
 
         # Topic error_code
         response_body += error_code.to_bytes(2, "big")
