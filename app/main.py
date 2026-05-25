@@ -8,70 +8,35 @@ import threading
 
 def build_apiversions_response(correlation_id, api_version):
 
-    if 0 <= api_version <= 4:
-        error_code = 0
-    else:
-        error_code = 35
-
+    # error_code = 0
     response_body = b""
+    response_body += (0).to_bytes(2, "big")
 
-    # error_code
-    response_body += error_code.to_bytes(2, "big")
+    # api_keys COMPACT_ARRAY (1 element → encoded as 2)
+    response_body += b"\x02"
 
-    # COMPACT_ARRAY => 2 elements
-    response_body += b"\x03"
-
-    # -----------------------------------------
-    # ApiVersions API
-    # -----------------------------------------
-
+    # API key 18 (ApiVersions)
     response_body += (18).to_bytes(2, "big")
-    response_body += (0).to_bytes(2, "big")
-    response_body += (4).to_bytes(2, "big")
-    response_body += b"\x00"
-
-    # -----------------------------------------
-    # Fetch API (1)   <-- REQUIRED FIX
-    # -----------------------------------------
-    response_body += (1).to_bytes(2, "big")
-    response_body += (0).to_bytes(2, "big")
-    response_body += (16).to_bytes(2, "big")
-    response_body += b"\x00"
-    
-    # -----------------------------------------
-    # DescribeTopicPartitions API
-    # -----------------------------------------
-
-    response_body += (75).to_bytes(2, "big")
-    response_body += (0).to_bytes(2, "big")
-    response_body += (0).to_bytes(2, "big")
-    response_body += b"\x00"
+    response_body += (0).to_bytes(2, "big")  # min_version
+    response_body += (4).to_bytes(2, "big")  # max_version
+    response_body += b"\x00"  # TAG_BUFFER
 
     # throttle_time_ms
     response_body += (0).to_bytes(4, "big")
 
-    # TAG_BUFFER
+    # final TAG_BUFFER
     response_body += b"\x00"
 
-    # -----------------------------------------
-    # Response Header v0
-    # -----------------------------------------
+    # header (correlation id + tagged fields byte)
+    response_header = correlation_id + b"\x00"
 
-    response_header = correlation_id
+    message_size = len(response_header) + len(response_body)
 
-    message_size = (
-        len(response_header) +
-        len(response_body)
-    )
-
-    response = (
+    return (
         message_size.to_bytes(4, "big")
         + response_header
         + response_body
     )
-
-    return response
-
 
 
 # =========================================================
