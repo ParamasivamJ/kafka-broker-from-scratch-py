@@ -67,3 +67,73 @@ def parse_topics(request):
 
     print("\n==================================\n")
     return topics
+
+# parsers/fetch_parser.py
+
+def parse_fetch_topic_id(request):
+
+    print("\n========== FETCH REQUEST DEBUG ==========")
+
+    print("REQUEST LENGTH:", len(request))
+
+    print("REQUEST HEX:")
+
+    print(request.hex())
+
+    # -------------------------------------------------
+    # Print request in chunks
+    # -------------------------------------------------
+
+    print("\n4-BYTE CHUNKS:")
+
+    for i in range(0, len(request), 4):
+
+        chunk = request[i:i+4]
+
+        print(
+            f"OFFSET {i:03d} | "
+            f"{chunk.hex()}"
+        )
+
+    # -------------------------------------------------
+    # TEMPORARY APPROACH
+    #
+    # Find 16-byte candidate UUID
+    #
+    # We will refine after logs
+    # -------------------------------------------------
+
+    cursor = 0
+
+    cursor += 4   # message_size
+    cursor += 2   # api_key
+    cursor += 2   # api_version
+    cursor += 4   # correlation_id
+
+    print("\nAFTER HEADER:", cursor)
+
+    # -------------------------------------------------
+    # DEBUG REMAINING BYTES
+    # -------------------------------------------------
+
+    remaining = request[cursor:]
+
+    print("REMAINING HEX:")
+
+    print(remaining.hex())
+
+    # -------------------------------------------------
+    # TEMP UUID EXTRACTION
+    #
+    # Adjust using debug logs
+    # -------------------------------------------------
+
+    topic_id = request[-16:]
+
+    print("TOPIC UUID CANDIDATE:")
+
+    print(topic_id.hex())
+
+    print("========================================\n")
+
+    return topic_id

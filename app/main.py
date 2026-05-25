@@ -3,13 +3,13 @@ import os
 import socket
 import threading
 sys.path.append(os.path.dirname(__file__))
-from parsing import parse_topics
+from parsing import parse_topics,parse_fetch_topic_id
 from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
 )
 from fetch_handler import (
-    build_fetch_response
+    build_fetch_unknown_topic_response
 )
 
 
@@ -47,8 +47,15 @@ def handle_client(conn):
 
                 print("FETCH API VERSION:", api_version)
 
-                response = build_fetch_response(
-                    correlation_id
+                topic_id = parse_fetch_topic_id(
+                    request
+                )
+
+                response = (
+                    build_fetch_unknown_topic_response(
+                        correlation_id,
+                        topic_id
+                    )
                 )
 
                 conn.sendall(response)
