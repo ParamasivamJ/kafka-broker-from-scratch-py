@@ -132,3 +132,89 @@ def build_fetch_unknown_topic_response(
     print("========================================\n")
 
     return response
+
+def build_fetch_response_empty_topics(
+    correlation_id
+):
+
+    print("\n========== EMPTY FETCH RESPONSE ==========")
+
+    response_body = b""
+
+    # -------------------------------------------------
+    # throttle_time_ms
+    # -------------------------------------------------
+
+    response_body += (0).to_bytes(
+        4,
+        "big"
+    )
+
+    print("THROTTLE TIME: 0")
+
+    # -------------------------------------------------
+    # error_code
+    # -------------------------------------------------
+
+    response_body += (0).to_bytes(
+        2,
+        "big"
+    )
+
+    print("ERROR CODE: 0")
+
+    # -------------------------------------------------
+    # session_id
+    # -------------------------------------------------
+
+    response_body += (0).to_bytes(
+        4,
+        "big"
+    )
+
+    print("SESSION ID: 0")
+
+    # -------------------------------------------------
+    # responses array
+    #
+    # EMPTY ARRAY
+    #
+    # compact array:
+    # 0 elements => 1
+    # -------------------------------------------------
+
+    response_body += b"\x01"
+
+    print("RESPONSES ARRAY: EMPTY")
+
+    # -------------------------------------------------
+    # TAG_BUFFER
+    # -------------------------------------------------
+
+    response_body += b"\x00"
+
+    print("FINAL TAG BUFFER")
+
+    response_header = (
+        correlation_id +
+        b"\x00"
+    )
+
+    message_size = (
+        len(response_header) +
+        len(response_body)
+    )
+
+    response = (
+        message_size.to_bytes(4, "big") +
+        response_header +
+        response_body
+    )
+
+    print("FETCH EMPTY RESPONSE HEX:")
+
+    print(response.hex())
+
+    print("==========================================\n")
+
+    return response

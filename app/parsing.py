@@ -69,7 +69,7 @@ def parse_topics(request):
     return topics
 
 
-def parse_fetch_topic_id(request):
+def parse_fetch_request(request):
 
     print("\n========== FETCH REQUEST DEBUG ==========")
 
@@ -79,41 +79,25 @@ def parse_fetch_topic_id(request):
 
     print(request.hex())
 
-    print("\n4-BYTE CHUNKS:")
-
-    for i in range(0, len(request), 4):
-
-        chunk = request[i:i+4]
-
-        print(
-            f"OFFSET {i:03d} | "
-            f"{chunk.hex()}"
-        )
-
-    # =================================================
-    # PARSE REQUEST HEADER
-    # =================================================
-
     cursor = 0
 
-    # message_size
-    cursor += 4
+    # -------------------------------------------------
+    # Fixed Header
+    # -------------------------------------------------
 
-    # api_key
+    cursor += 4
     cursor += 2
 
-    # api_version
     api_version = int.from_bytes(
-        request[6:8],
+        request[cursor:cursor + 2],
         "big"
     )
 
     cursor += 2
 
-    print("\nFETCH API VERSION:", api_version)
-
-    # correlation_id
     cursor += 4
+
+    print("FETCH API VERSION:", api_version)
 
     print("AFTER FIXED HEADER:", cursor)
 
@@ -145,177 +129,107 @@ def parse_fetch_topic_id(request):
     # header TAG_BUFFER
     # -------------------------------------------------
 
-    tag_buffer = request[cursor]
+    header_tag = request[cursor]
 
-    print("HEADER TAG BUFFER:", tag_buffer)
+    print("HEADER TAG BUFFER:", header_tag)
 
     cursor += 1
 
-    # =================================================
-    # FETCH REQUEST BODY
-    # =================================================
-
-    body_start = cursor
-
-    print("\nBODY START:", body_start)
-
     # -------------------------------------------------
-    # ReplicaId exists only <= v14
+    # Fetch Request Fields
     # -------------------------------------------------
 
-    if api_version <= 14:
-
-        replica_id = int.from_bytes(
-            request[cursor:cursor+4],
-            "big",
-            signed=True
-        )
-
-        print("REPLICA ID:", replica_id)
-
-        cursor += 4
-
-    # -------------------------------------------------
-    # MaxWaitMs
-    # -------------------------------------------------
+    print("\nBODY START:", cursor)
 
     max_wait_ms = int.from_bytes(
-        request[cursor:cursor+4],
+        request[cursor:cursor + 4],
         "big"
     )
+
+    cursor += 4
 
     print("MAX WAIT MS:", max_wait_ms)
 
-    cursor += 4
-
-    # -------------------------------------------------
-    # MinBytes
-    # -------------------------------------------------
-
     min_bytes = int.from_bytes(
-        request[cursor:cursor+4],
+        request[cursor:cursor + 4],
         "big"
     )
 
-    print("MIN BYTES:", min_bytes)
-
     cursor += 4
 
-    # -------------------------------------------------
-    # MaxBytes
-    # -------------------------------------------------
+    print("MIN BYTES:", min_bytes)
 
     max_bytes = int.from_bytes(
-        request[cursor:cursor+4],
+        request[cursor:cursor + 4],
         "big",
         signed=True
     )
 
-    print("MAX BYTES:", max_bytes)
-
     cursor += 4
 
-    # -------------------------------------------------
-    # IsolationLevel
-    # -------------------------------------------------
+    print("MAX BYTES:", max_bytes)
 
     isolation_level = request[cursor]
 
-    print("ISOLATION LEVEL:", isolation_level)
-
     cursor += 1
 
-    # -------------------------------------------------
-    # SessionId
-    # -------------------------------------------------
+    print("ISOLATION LEVEL:", isolation_level)
 
     session_id = int.from_bytes(
-        request[cursor:cursor+4],
+        request[cursor:cursor + 4],
         "big"
     )
+
+    cursor += 4
 
     print("SESSION ID:", session_id)
 
-    cursor += 4
-
-    # -------------------------------------------------
-    # SessionEpoch
-    # -------------------------------------------------
-
     session_epoch = int.from_bytes(
-        request[cursor:cursor+4],
+        request[cursor:cursor + 4],
         "big"
     )
 
-    print("SESSION EPOCH:", session_epoch)
-
     cursor += 4
+
+    print("SESSION EPOCH:", session_epoch)
 
     print("AFTER FETCH HEADER:", cursor)
 
-    # =================================================
-    # TOPICS ARRAY
-    # =================================================
+    # -------------------------------------------------
+    # Topics COMPACT_ARRAY
+    # -------------------------------------------------
 
-    topics_array_raw = request[cursor]
+    topics_raw = request[cursor]
 
-    print("TOPICS ARRAY RAW:", topics_array_raw)
+    topics_count = topics_raw - 1
 
-    topics_count = topics_array_raw - 1
+    print("TOPICS ARRAY RAW:", topics_raw)
 
     print("TOPICS COUNT:", topics_count)
 
     cursor += 1
 
-    # -------------------------------------------------
-    # Validate topic count
-    # -------------------------------------------------
-
-    if topics_count <= 0:
+    if topics_count == 0:
 
         print("NO TOPICS FOUND")
 
-        return b"\x00" * 16
+        return {
+            "topics_count": 0,
+            "topic_id": None
+        }
 
-    # =================================================
-    # TOPIC UUID
-    # =================================================
+    # -------------------------------------------------
+    # Topic UUID
+    # -------------------------------------------------
 
     topic_id = request[
         cursor:
         cursor + 16
     ]
 
-    print("\nTOPIC UUID FOUND:")
+    print("TOPIC UUID:", topic_id.hex())
 
-    print(topic_id.hex())
-
-    print("UUID OFFSET:", cursor)
-
-    cursor += 16
-
-    # =================================================
-    # PARTITIONS ARRAY
-    # =================================================
-
-    partitions_raw = request[cursor]
-
-    print("\nPARTITIONS ARRAY RAW:", partitions_raw)
-
-    partitions_count = partitions_raw - 1
-
-    print("PARTITIONS COUNT:", partitions_count)
-
-    cursor += 1
-
-    print("\n========== FINAL FETCH PARSE ==========")
-
-    print("FINAL CURSOR:", cursor)
-
-    print("REMAINING BYTES:")
-
-    print(request[cursor:].hex())
-
-    print("=======================================\n")
-
-    return topic_id
+    return {
+        "topics_count": topics_count,
+        "topic_id": topic_id
+    }

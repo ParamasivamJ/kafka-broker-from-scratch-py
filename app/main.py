@@ -3,13 +3,15 @@ import os
 import socket
 import threading
 sys.path.append(os.path.dirname(__file__))
-from parsing import parse_topics,parse_fetch_topic_id
+from parsing import parse_topics, parse_fetch_request
 from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
 )
-from fetch_handler import (
+from fetch_handler import (  
+    build_fetch_response_empty_topics  , 
     build_fetch_unknown_topic_response
+
 )
 
 
@@ -45,18 +47,39 @@ def handle_client(conn):
 
                 print("\n========== FETCH REQUEST ==========")
 
-                print("FETCH API VERSION:", api_version)
+                print(
+                    f"FETCH API VERSION: "
+                    f"{api_version}"
+                )
 
-                topic_id = parse_fetch_topic_id(
+                fetch_data = parse_fetch_request(
                     request
                 )
 
-                response = (
-                    build_fetch_unknown_topic_response(
-                        correlation_id,
-                        topic_id
+                # -------------------------------------------------
+                # EMPTY TOPICS
+                # -------------------------------------------------
+
+                if fetch_data["topics_count"] == 0:
+
+                    response = (
+                        build_fetch_response_empty_topics(
+                            correlation_id
+                        )
                     )
-                )
+
+                # -------------------------------------------------
+                # UNKNOWN TOPIC
+                # -------------------------------------------------
+
+                else:
+
+                    response = (
+                        build_fetch_unknown_topic_response(
+                            correlation_id,
+                            fetch_data["topic_id"]
+                        )
+                    )
 
                 conn.sendall(response)
 
