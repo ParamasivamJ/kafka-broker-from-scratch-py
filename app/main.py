@@ -8,15 +8,13 @@ import threading
 
 def build_apiversions_response(correlation_id, api_version):
 
-    error_code = 0 if 0 <= api_version <= 4 else 35
-
     response_body = b""
 
     # error_code
-    response_body += error_code.to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
 
-    # 2 APIs → compact array length = 2 + 1 = 3
-    response_body += b"\x03"
+    # 3 APIs → compact array = 3 + 1 = 4
+    response_body += b"\x04"
 
     # -------------------------
     # API 18 (ApiVersions)
@@ -24,6 +22,14 @@ def build_apiversions_response(correlation_id, api_version):
     response_body += (18).to_bytes(2, "big")
     response_body += (0).to_bytes(2, "big")
     response_body += (4).to_bytes(2, "big")
+    response_body += b"\x00"
+
+    # -------------------------
+    # API 1 (Fetch)
+    # -------------------------
+    response_body += (1).to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
+    response_body += (16).to_bytes(2, "big")
     response_body += b"\x00"
 
     # -------------------------
@@ -40,7 +46,6 @@ def build_apiversions_response(correlation_id, api_version):
     # final TAG_BUFFER
     response_body += b"\x00"
 
-    # header (correlation id unchanged)
     response_header = correlation_id
 
     message_size = len(response_header) + len(response_body)
