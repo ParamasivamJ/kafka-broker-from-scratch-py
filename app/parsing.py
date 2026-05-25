@@ -68,7 +68,6 @@ def parse_topics(request):
     print("\n==================================\n")
     return topics
 
-# parsers/fetch_parser.py
 
 def parse_fetch_topic_id(request):
 
@@ -79,10 +78,6 @@ def parse_fetch_topic_id(request):
     print("REQUEST HEX:")
 
     print(request.hex())
-
-    # -------------------------------------------------
-    # Print request in chunks
-    # -------------------------------------------------
 
     print("\n4-BYTE CHUNKS:")
 
@@ -96,43 +91,101 @@ def parse_fetch_topic_id(request):
         )
 
     # -------------------------------------------------
-    # TEMPORARY APPROACH
-    #
-    # Find 16-byte candidate UUID
-    #
-    # We will refine after logs
+    # Parse request step-by-step
     # -------------------------------------------------
 
     cursor = 0
 
-    cursor += 4   # message_size
-    cursor += 2   # api_key
-    cursor += 2   # api_version
-    cursor += 4   # correlation_id
+    # message_size
+    cursor += 4
 
-    print("\nAFTER HEADER:", cursor)
+    # api_key
+    cursor += 2
 
-    # -------------------------------------------------
-    # DEBUG REMAINING BYTES
-    # -------------------------------------------------
+    # api_version
+    cursor += 2
 
-    remaining = request[cursor:]
+    # correlation_id
+    cursor += 4
 
-    print("REMAINING HEX:")
-
-    print(remaining.hex())
+    print("\nAFTER FIXED HEADER:", cursor)
 
     # -------------------------------------------------
-    # TEMP UUID EXTRACTION
-    #
-    # Adjust using debug logs
+    # client_id
     # -------------------------------------------------
 
-    topic_id = request[-16:]
+    client_id_length = int.from_bytes(
+        request[cursor:cursor + 2],
+        "big"
+    )
 
-    print("TOPIC UUID CANDIDATE:")
+    print("CLIENT ID LENGTH:", client_id_length)
+
+    cursor += 2
+
+    client_id = request[
+        cursor:
+        cursor + client_id_length
+    ]
+
+    print("CLIENT ID:", client_id)
+
+    cursor += client_id_length
+
+    print("AFTER CLIENT ID:", cursor)
+
+    # -------------------------------------------------
+    # header TAG_BUFFER
+    # -------------------------------------------------
+
+    tag_buffer = request[cursor]
+
+    print("HEADER TAG BUFFER:", tag_buffer)
+
+    cursor += 1
+
+    # -------------------------------------------------
+    # Skip Fetch fields before topics
+    # -------------------------------------------------
+
+    cursor += 4   # replica_id
+    cursor += 4   # max_wait_ms
+    cursor += 4   # min_bytes
+    cursor += 4   # max_bytes
+    cursor += 1   # isolation_level
+    cursor += 4   # session_id
+    cursor += 4   # session_epoch
+
+    print("AFTER FETCH HEADER:", cursor)
+
+    # -------------------------------------------------
+    # topics compact array
+    # -------------------------------------------------
+
+    topics_array_length = request[cursor]
+
+    print("TOPICS ARRAY RAW:", topics_array_length)
+
+    topics_count = topics_array_length - 1
+
+    print("TOPICS COUNT:", topics_count)
+
+    cursor += 1
+
+    # -------------------------------------------------
+    # topic_id
+    # -------------------------------------------------
+
+    topic_id = request[
+        cursor:
+        cursor + 16
+    ]
+
+    print("TOPIC UUID FOUND:")
 
     print(topic_id.hex())
+
+    print("UUID OFFSET:", cursor)
 
     print("========================================\n")
 
