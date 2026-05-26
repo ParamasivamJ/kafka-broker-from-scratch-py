@@ -10,6 +10,7 @@ def encode_varint(value):
 def build_fetch_response_with_records(
     correlation_id,
     topic_id,
+    partition_index,
     record_bytes
 ):
     """
@@ -18,6 +19,7 @@ def build_fetch_response_with_records(
     """
     print("\n========== RECORDS FETCH RESPONSE ==========")
     print("TOPIC ID:", topic_id.hex())
+    print("PARTITION INDEX:", partition_index)
     print("RECORD BYTES SIZE:", len(record_bytes))
 
     response_body = b""
@@ -40,8 +42,8 @@ def build_fetch_response_with_records(
     # partitions compact array: 1 element => length = 2
     response_body += b"\x02"
 
-    # partition_index = 0
-    response_body += (0).to_bytes(4, "big")
+    # partition_index
+    response_body += partition_index.to_bytes(4, "big")
 
     # error_code = 0 (NO_ERROR)
     response_body += (0).to_bytes(2, "big")
@@ -95,7 +97,8 @@ def build_fetch_response_with_records(
 
 def build_fetch_response_empty_records(
     correlation_id,
-    topic_id
+    topic_id,
+    partition_index=0
 ):
     """
     Stage CM4: Topic exists but has no messages.
@@ -103,6 +106,7 @@ def build_fetch_response_empty_records(
     """
     print("\n========== EMPTY RECORDS FETCH RESPONSE ==========")
     print("TOPIC ID:", topic_id.hex())
+    print("PARTITION INDEX:", partition_index)
 
     response_body = b""
 
@@ -124,8 +128,8 @@ def build_fetch_response_empty_records(
     # partitions compact array: 1 element => length = 2
     response_body += b"\x02"
 
-    # partition_index = 0
-    response_body += (0).to_bytes(4, "big")
+    # partition_index
+    response_body += partition_index.to_bytes(4, "big")
 
     # error_code = 0 (NO_ERROR)
     response_body += (0).to_bytes(2, "big")

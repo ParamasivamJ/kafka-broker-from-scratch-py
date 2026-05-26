@@ -77,6 +77,7 @@ def handle_client(conn):
                 else:
 
                     topic_id = fetch_data["topic_id"]
+                    partition_index = fetch_data.get("partition_index", 0)
 
                     try:
                         metadata = load_metadata()
@@ -88,32 +89,34 @@ def handle_client(conn):
                         exists = False
 
                     if exists:
-                        # CM4 / EG2: topic exists. Check if there are messages on disk.
+                        # CM4 / EG2 / FD8: topic exists. Check if there are messages on disk.
                         topic_name = find_topic_name_by_uuid(metadata, topic_id)
                         record_bytes = b""
                         if topic_name:
-                            log_dir = f"/tmp/kraft-combined-logs/{topic_name}-0"
+                            log_dir = f"/tmp/kraft-combined-logs/{topic_name}-{partition_index}"
                             log_file_path = f"{log_dir}/00000000000000000000.log"
                             if os.path.exists(log_file_path):
                                 try:
                                     with open(log_file_path, "rb") as f:
                                         record_bytes = f.read()
-                                    print(f"READ {len(record_bytes)} BYTES FROM DISK")
+                                    print(f"READ {len(record_bytes)} BYTES FROM DISK FOR PARTITION {partition_index}")
                                 except Exception as log_err:
                                     print("LOG FILE READ ERROR:", log_err)
 
                         if record_bytes:
-                            # Stage EG2: topic exists and has messages
+                            # Stage EG2 / FD8: topic exists and has messages
                             response = build_fetch_response_with_records(
                                 correlation_id,
                                 topic_id,
+                                partition_index,
                                 record_bytes
                             )
                         else:
                             # Stage CM4: topic exists but has no messages
                             response = build_fetch_response_empty_records(
                                 correlation_id,
-                                topic_id
+                                topic_id,
+                                partition_index
                             )
                     else:
                         # HN6: topic does not exist

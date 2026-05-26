@@ -199,37 +199,88 @@ def parse_fetch_request(request):
     # Topics COMPACT_ARRAY
     # -------------------------------------------------
 
-    topics_raw = request[cursor]
+    def read_varint(data, offset):
+        val = 0
+        shift = 0
+        while True:
+            b = data[offset]
+            offset += 1
+            val |= (b & 0x7f) << shift
+            if not (b & 0x80):
+                break
+            shift += 7
+        return val, offset
 
+    topics_raw, cursor = read_varint(request, cursor)
     topics_count = topics_raw - 1
 
     print("TOPICS ARRAY RAW:", topics_raw)
-
     print("TOPICS COUNT:", topics_count)
 
-    cursor += 1
-
     if topics_count == 0:
-
         print("NO TOPICS FOUND")
-
         return {
             "topics_count": 0,
-            "topic_id": None
+            "topic_id": None,
+            "partition_index": 0
         }
 
     # -------------------------------------------------
     # Topic UUID
     # -------------------------------------------------
 
-    topic_id = request[
-        cursor:
-        cursor + 16
-    ]
+    topic_id = request[cursor:cursor + 16]
+    cursor += 16
 
     print("TOPIC UUID:", topic_id.hex())
 
+    # -------------------------------------------------
+    # Partitions COMPACT_ARRAY
+    # -------------------------------------------------
+    partitions_raw, cursor = read_varint(request, cursor)
+    partitions_count = partitions_raw - 1
+    print("PARTITIONS COUNT:", partitions_count)
+
+    partitions = []
+    for _ in range(partitions_count):
+        partition_index = int.from_bytes(request[cursor:cursor+4], "big")
+        cursor += 4
+
+        current_leader_epoch = int.from_bytes(request[cursor:cursor+4], "big")
+        cursor += 4
+
+        fetch_offset = int.from_bytes(request[cursor:cursor+8], "big")
+        cursor += 8
+
+        last_fetched_epoch = int.from_bytes(request[cursor:cursor+4], "big")
+        cursor += 4
+
+        log_start_offset = int.from_bytes(request[cursor:cursor+8], "big")
+        cursor += 8
+
+        partition_max_bytes = int.from_bytes(request[cursor:cursor+4], "big")
+        cursor += 4
+
+        # partition TAG_BUFFER
+        _, cursor = read_varint(request, cursor)
+
+        partitions.append({
+            "partition_index": partition_index,
+            "current_leader_epoch": current_leader_epoch,
+            "fetch_offset": fetch_offset,
+            "last_fetched_epoch": last_fetched_epoch,
+            "log_start_offset": log_start_offset,
+            "partition_max_bytes": partition_max_bytes
+        })
+
+    # topic TAG_BUFFER
+    _, cursor = read_varint(request, cursor)
+
+    target_partition_index = partitions[0]["partition_index"] if partitions else 0
+    print("PARTITION INDEX:", target_partition_index)
+
     return {
         "topics_count": topics_count,
-        "topic_id": topic_id
+        "topic_id": topic_id,
+        "partition_index": target_partition_index
     }
