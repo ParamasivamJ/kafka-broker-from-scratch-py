@@ -8,11 +8,12 @@ from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
 )
-from fetch_handler import (  
+from fetch_handler import (
     build_fetch_response_empty_topics,
     build_fetch_unknown_topic_response,
     build_fetch_response_empty_records,
 )
+from metadata_utils import load_metadata, topic_uuid_exists
 
 
 def handle_client(conn):
@@ -69,17 +70,34 @@ def handle_client(conn):
                     )
 
                 # -------------------------------------------------
-                # TOPIC EXISTS, NO MESSAGES (CM4)
+                # Route: known topic (empty records) vs unknown topic
                 # -------------------------------------------------
 
                 else:
 
-                    response = (
-                        build_fetch_response_empty_records(
-                            correlation_id,
-                            fetch_data["topic_id"]
+                    topic_id = fetch_data["topic_id"]
+
+                    try:
+                        metadata = load_metadata()
+                        exists = topic_uuid_exists(
+                            metadata, topic_id
                         )
-                    )
+                    except Exception as meta_err:
+                        print("METADATA READ ERROR:", meta_err)
+                        exists = False
+
+                    if exists:
+                        # CM4: topic exists, no messages
+                        response = build_fetch_response_empty_records(
+                            correlation_id,
+                            topic_id
+                        )
+                    else:
+                        # HN6: topic does not exist
+                        response = build_fetch_unknown_topic_response(
+                            correlation_id,
+                            topic_id
+                        )
 
                 conn.sendall(response)
 

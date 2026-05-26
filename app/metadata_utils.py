@@ -53,6 +53,17 @@ def extract_partitions(metadata, topic_uuid):
     return partitions
 
 
+def topic_uuid_exists(metadata, topic_uuid):
+    """Return True if topic_uuid (bytes) is found in the metadata log."""
+    found = metadata.find(topic_uuid) != -1
+    print(
+        "TOPIC UUID EXISTS:",
+        found,
+        "| UUID:", topic_uuid.hex()
+    )
+    return found
+
+
 def find_topic_metadata(
     metadata,
     topic_name
