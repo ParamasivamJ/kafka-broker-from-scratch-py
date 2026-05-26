@@ -64,6 +64,33 @@ def topic_uuid_exists(metadata, topic_uuid):
     return found
 
 
+def find_topic_name_by_uuid(metadata, topic_uuid):
+    """
+    Search the raw metadata log to find the topic name associated with the topic_uuid.
+    The topic UUID is placed directly after the compact string encoding of the topic name:
+    [len + 1] + [topic_name] + [topic_uuid (16 bytes)]
+    """
+    uuid_index = metadata.find(topic_uuid)
+    if uuid_index == -1:
+        return None
+
+    # Let's search backwards for the compact string length byte
+    for L in range(1, 100):
+        if uuid_index - L - 1 >= 0:
+            len_byte = metadata[uuid_index - L - 1]
+            if len_byte == L + 1:
+                topic_name_bytes = metadata[uuid_index - L:uuid_index]
+                # Verify that the extracted topic name contains only printable ASCII chars
+                if all(32 <= b <= 126 for b in topic_name_bytes):
+                    try:
+                        name = topic_name_bytes.decode("utf-8")
+                        print(f"FOUND TOPIC NAME FOR UUID {topic_uuid.hex()}: {name}")
+                        return name
+                    except Exception:
+                        pass
+    return None
+
+
 def find_topic_metadata(
     metadata,
     topic_name

@@ -1,3 +1,98 @@
+def encode_varint(value):
+    out = bytearray()
+    while value >= 0x80:
+        out.append((value & 0x7f) | 0x80)
+        value >>= 7
+    out.append(value & 0x7f)
+    return bytes(out)
+
+
+def build_fetch_response_with_records(
+    correlation_id,
+    topic_id,
+    record_bytes
+):
+    """
+    Stage EG2: Topic has a message.
+    Returns error_code=0 with the record bytes.
+    """
+    print("\n========== RECORDS FETCH RESPONSE ==========")
+    print("TOPIC ID:", topic_id.hex())
+    print("RECORD BYTES SIZE:", len(record_bytes))
+
+    response_body = b""
+
+    # throttle_time_ms = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # error_code = 0 (NO_ERROR)
+    response_body += (0).to_bytes(2, "big")
+
+    # session_id = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # responses compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # topic_id (16 bytes UUID)
+    response_body += topic_id
+
+    # partitions compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # partition_index = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # error_code = 0 (NO_ERROR)
+    response_body += (0).to_bytes(2, "big")
+
+    # high_watermark = 1
+    response_body += (1).to_bytes(8, "big")
+
+    # last_stable_offset = 0
+    response_body += (0).to_bytes(8, "big")
+
+    # log_start_offset = 0
+    response_body += (0).to_bytes(8, "big")
+
+    # aborted_transactions compact array: 0 elements => length = 1
+    response_body += b"\x01"
+
+    # preferred_read_replica = -1
+    response_body += (-1).to_bytes(4, "big", signed=True)
+
+    # records: COMPACT_NULLABLE_BYTES
+    # length + 1 as UNSIGNED_VARINT, then data
+    records_length_varint = encode_varint(len(record_bytes) + 1)
+    response_body += records_length_varint
+    response_body += record_bytes
+
+    # partition TAG_BUFFER
+    response_body += b"\x00"
+
+    # topic TAG_BUFFER
+    response_body += b"\x00"
+
+    # final TAG_BUFFER
+    response_body += b"\x00"
+
+    response_header = correlation_id + b"\x00"
+
+    message_size = len(response_header) + len(response_body)
+
+    response = (
+        message_size.to_bytes(4, "big") +
+        response_header +
+        response_body
+    )
+
+    print("RECORDS RESPONSE HEX:")
+    print(response.hex()[:200] + "...")
+    print("============================================\n")
+
+    return response
+
+
 def build_fetch_response_empty_records(
     correlation_id,
     topic_id

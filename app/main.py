@@ -12,8 +12,9 @@ from fetch_handler import (
     build_fetch_response_empty_topics,
     build_fetch_unknown_topic_response,
     build_fetch_response_empty_records,
+    build_fetch_response_with_records,
 )
-from metadata_utils import load_metadata, topic_uuid_exists
+from metadata_utils import load_metadata, topic_uuid_exists, find_topic_name_by_uuid
 
 
 def handle_client(conn):
@@ -87,11 +88,33 @@ def handle_client(conn):
                         exists = False
 
                     if exists:
-                        # CM4: topic exists, no messages
-                        response = build_fetch_response_empty_records(
-                            correlation_id,
-                            topic_id
-                        )
+                        # CM4 / EG2: topic exists. Check if there are messages on disk.
+                        topic_name = find_topic_name_by_uuid(metadata, topic_id)
+                        record_bytes = b""
+                        if topic_name:
+                            log_dir = f"/tmp/kraft-combined-logs/{topic_name}-0"
+                            log_file_path = f"{log_dir}/00000000000000000000.log"
+                            if os.path.exists(log_file_path):
+                                try:
+                                    with open(log_file_path, "rb") as f:
+                                        record_bytes = f.read()
+                                    print(f"READ {len(record_bytes)} BYTES FROM DISK")
+                                except Exception as log_err:
+                                    print("LOG FILE READ ERROR:", log_err)
+
+                        if record_bytes:
+                            # Stage EG2: topic exists and has messages
+                            response = build_fetch_response_with_records(
+                                correlation_id,
+                                topic_id,
+                                record_bytes
+                            )
+                        else:
+                            # Stage CM4: topic exists but has no messages
+                            response = build_fetch_response_empty_records(
+                                correlation_id,
+                                topic_id
+                            )
                     else:
                         # HN6: topic does not exist
                         response = build_fetch_unknown_topic_response(
