@@ -1,3 +1,84 @@
+def build_fetch_response_empty_records(
+    correlation_id,
+    topic_id
+):
+    """
+    Stage CM4: Topic exists but has no messages.
+    Returns error_code=0 with 0 records.
+    """
+    print("\n========== EMPTY RECORDS FETCH RESPONSE ==========")
+    print("TOPIC ID:", topic_id.hex())
+
+    response_body = b""
+
+    # throttle_time_ms = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # error_code = 0 (NO_ERROR)
+    response_body += (0).to_bytes(2, "big")
+
+    # session_id = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # responses compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # topic_id (16 bytes UUID)
+    response_body += topic_id
+
+    # partitions compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # partition_index = 0
+    response_body += (0).to_bytes(4, "big")
+
+    # error_code = 0 (NO_ERROR)
+    response_body += (0).to_bytes(2, "big")
+
+    # high_watermark
+    response_body += (0).to_bytes(8, "big")
+
+    # last_stable_offset
+    response_body += (0).to_bytes(8, "big")
+
+    # log_start_offset
+    response_body += (0).to_bytes(8, "big")
+
+    # aborted_transactions compact array: 0 elements => length = 1
+    response_body += b"\x01"
+
+    # preferred_read_replica = -1
+    response_body += (-1).to_bytes(4, "big", signed=True)
+
+    # records compact array: 0 elements => length = 1
+    response_body += b"\x01"
+
+    # partition TAG_BUFFER
+    response_body += b"\x00"
+
+    # topic TAG_BUFFER
+    response_body += b"\x00"
+
+    # final TAG_BUFFER
+    response_body += b"\x00"
+
+    response_header = correlation_id + b"\x00"
+
+    message_size = len(response_header) + len(response_body)
+
+    response = (
+        message_size.to_bytes(4, "big") +
+        response_header +
+        response_body
+    )
+
+    print("EMPTY RECORDS RESPONSE HEX:")
+    print(response.hex())
+    print("==================================================\n")
+
+    return response
+
+
 def build_fetch_unknown_topic_response(
     correlation_id,
     topic_id

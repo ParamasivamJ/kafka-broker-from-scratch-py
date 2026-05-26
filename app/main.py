@@ -9,9 +9,9 @@ from protocol import (
     build_describe_topic_partitions_response,
 )
 from fetch_handler import (  
-    build_fetch_response_empty_topics  , 
-    build_fetch_unknown_topic_response
-
+    build_fetch_response_empty_topics,
+    build_fetch_unknown_topic_response,
+    build_fetch_response_empty_records,
 )
 
 
@@ -69,13 +69,13 @@ def handle_client(conn):
                     )
 
                 # -------------------------------------------------
-                # UNKNOWN TOPIC
+                # TOPIC EXISTS, NO MESSAGES (CM4)
                 # -------------------------------------------------
 
                 else:
 
                     response = (
-                        build_fetch_unknown_topic_response(
+                        build_fetch_response_empty_records(
                             correlation_id,
                             fetch_data["topic_id"]
                         )
