@@ -62,6 +62,18 @@ def handle_client(conn):
                         partitions = extract_partitions(metadata, topic_uuid)
                         if produce_data["partition_index"] in partitions:
                             error_code = 0 # Success
+                            
+                            # Persist records to disk
+                            records = produce_data.get("records", b"")
+                            if records:
+                                topic_name = produce_data["topic_name"]
+                                partition_index = produce_data["partition_index"]
+                                log_dir = f"/tmp/kraft-combined-logs/{topic_name}-{partition_index}"
+                                os.makedirs(log_dir, exist_ok=True)
+                                log_file_path = f"{log_dir}/00000000000000000000.log"
+                                with open(log_file_path, "ab") as f:
+                                    f.write(records)
+                                print(f"Successfully persisted {len(records)} bytes to {log_file_path}")
                 except Exception as val_err:
                     print("Error during produce validation:", val_err)
 

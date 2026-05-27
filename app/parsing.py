@@ -358,14 +358,17 @@ def parse_produce_request(request):
 
             # Records (COMPACT_NULLABLE_BYTES)
             records_raw_len, cursor = read_varint(request, cursor)
-            if records_raw_len > 0:
+            records_bytes = b""
+            if records_raw_len > 1:
+                records_bytes = request[cursor:cursor + records_raw_len - 1]
                 cursor += (records_raw_len - 1)
 
             # partition tag buffer
             _, cursor = read_varint(request, cursor)
 
             partitions.append({
-                "index": index
+                "index": index,
+                "records": records_bytes
             })
 
         # topic tag buffer
@@ -379,11 +382,13 @@ def parse_produce_request(request):
     # Return the first topic name and first partition index to reply with
     first_topic_name = topics[0]["name"] if topics else ""
     first_partition_index = topics[0]["partitions"][0]["index"] if topics and topics[0]["partitions"] else 0
+    first_records_bytes = topics[0]["partitions"][0]["records"] if topics and topics[0]["partitions"] else b""
 
-    print("PARSED PRODUCE REQUEST - TOPIC:", first_topic_name, "| PARTITION:", first_partition_index)
+    print("PARSED PRODUCE REQUEST - TOPIC:", first_topic_name, "| PARTITION:", first_partition_index, "| RECORDS BYTES:", len(first_records_bytes))
     print("===========================================\n")
 
     return {
         "topic_name": first_topic_name,
-        "partition_index": first_partition_index
+        "partition_index": first_partition_index,
+        "records": first_records_bytes
     }
