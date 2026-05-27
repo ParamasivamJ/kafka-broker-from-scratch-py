@@ -167,7 +167,7 @@ def build_describe_topic_partitions_response(correlation_id, topics):
     return response
 
 
-def build_produce_invalid_response(correlation_id, topic_name, partition_index):
+def build_produce_response(correlation_id, topic_name, partition_index, error_code):
     def encode_varint(value):
         out = bytearray()
         while value >= 0x80:
@@ -192,17 +192,24 @@ def build_produce_invalid_response(correlation_id, topic_name, partition_index):
     # Index: int32 (4 bytes)
     response_body += partition_index.to_bytes(4, "big")
 
-    # ErrorCode: int16 (2 bytes) -> 3 (UNKNOWN_TOPIC_OR_PARTITION)
-    response_body += (3).to_bytes(2, "big")
+    # ErrorCode: int16 (2 bytes)
+    response_body += error_code.to_bytes(2, "big")
 
-    # BaseOffset: int64 (8 bytes) -> -1
-    response_body += (-1).to_bytes(8, "big", signed=True)
+    if error_code == 0:
+        base_offset = 0
+        log_start_offset = 0
+    else:
+        base_offset = -1
+        log_start_offset = -1
+
+    # BaseOffset: int64 (8 bytes)
+    response_body += base_offset.to_bytes(8, "big", signed=True)
 
     # LogAppendTimeMs: int64 (8 bytes) -> -1
     response_body += (-1).to_bytes(8, "big", signed=True)
 
-    # LogStartOffset: int64 (8 bytes) -> -1
-    response_body += (-1).to_bytes(8, "big", signed=True)
+    # LogStartOffset: int64 (8 bytes)
+    response_body += log_start_offset.to_bytes(8, "big", signed=True)
 
     # RecordErrors compact array: 0 elements => length = 1
     response_body += b"\x01"
@@ -233,10 +240,11 @@ def build_produce_invalid_response(correlation_id, topic_name, partition_index):
         response_body
     )
 
-    print("\n========== PRODUCE INVALID RESPONSE ==========")
+    print("\n========== PRODUCE RESPONSE ==========")
     print("TOPIC NAME:", topic_name)
     print("PARTITION INDEX:", partition_index)
+    print("ERROR CODE:", error_code)
     print("RESPONSE HEX:", response.hex())
-    print("==============================================\n")
+    print("======================================\n")
 
     return response

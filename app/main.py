@@ -7,7 +7,7 @@ from parsing import parse_topics, parse_fetch_request, parse_produce_request
 from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
-    build_produce_invalid_response,
+    build_produce_response,
 )
 from fetch_handler import (
     build_fetch_response_empty_topics,
@@ -50,10 +50,26 @@ def handle_client(conn):
                 print("\n========== PRODUCE REQUEST ==========")
                 print(f"PRODUCE API VERSION: {api_version}")
                 produce_data = parse_produce_request(request)
-                response = build_produce_invalid_response(
+                
+                # Validation
+                error_code = 3 # Default to UNKNOWN_TOPIC_OR_PARTITION
+                try:
+                    metadata = load_metadata()
+                    topic_name_bytes = produce_data["topic_name"].encode("utf-8")
+                    topic_metadata = find_topic_metadata(metadata, topic_name_bytes)
+                    if topic_metadata:
+                        topic_uuid = topic_metadata["uuid"]
+                        partitions = extract_partitions(metadata, topic_uuid)
+                        if produce_data["partition_index"] in partitions:
+                            error_code = 0 # Success
+                except Exception as val_err:
+                    print("Error during produce validation:", val_err)
+
+                response = build_produce_response(
                     correlation_id,
                     produce_data["topic_name"],
-                    produce_data["partition_index"]
+                    produce_data["partition_index"],
+                    error_code
                 )
                 conn.sendall(response)
             
