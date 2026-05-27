@@ -167,7 +167,7 @@ def build_describe_topic_partitions_response(correlation_id, topics):
     return response
 
 
-def build_produce_response(correlation_id, topic_name, partition_index, error_code):
+def build_produce_response(correlation_id, topics_data):
     def encode_varint(value):
         out = bytearray()
         while value >= 0x80:
@@ -178,50 +178,58 @@ def build_produce_response(correlation_id, topic_name, partition_index, error_co
 
     response_body = b""
 
-    # Responses compact array: 1 element => length = 2
-    response_body += b"\x02"
+    # Responses compact array: count + 1
+    response_body += encode_varint(len(topics_data) + 1)
 
-    # Name (Compact String)
-    topic_name_bytes = topic_name.encode("utf-8")
-    response_body += encode_varint(len(topic_name_bytes) + 1)
-    response_body += topic_name_bytes
+    for topic in topics_data:
+        topic_name = topic["name"]
+        partitions = topic["partitions"]
 
-    # PartitionResponses compact array: 1 element => length = 2
-    response_body += b"\x02"
+        # Name (Compact String)
+        topic_name_bytes = topic_name.encode("utf-8")
+        response_body += encode_varint(len(topic_name_bytes) + 1)
+        response_body += topic_name_bytes
 
-    # Index: int32 (4 bytes)
-    response_body += partition_index.to_bytes(4, "big")
+        # PartitionResponses compact array: count + 1
+        response_body += encode_varint(len(partitions) + 1)
 
-    # ErrorCode: int16 (2 bytes)
-    response_body += error_code.to_bytes(2, "big")
+        for part in partitions:
+            partition_index = part["index"]
+            error_code = part["error_code"]
 
-    if error_code == 0:
-        base_offset = 0
-        log_start_offset = 0
-    else:
-        base_offset = -1
-        log_start_offset = -1
+            # Index: int32 (4 bytes)
+            response_body += partition_index.to_bytes(4, "big")
 
-    # BaseOffset: int64 (8 bytes)
-    response_body += base_offset.to_bytes(8, "big", signed=True)
+            # ErrorCode: int16 (2 bytes)
+            response_body += error_code.to_bytes(2, "big")
 
-    # LogAppendTimeMs: int64 (8 bytes) -> -1
-    response_body += (-1).to_bytes(8, "big", signed=True)
+            if error_code == 0:
+                base_offset = 0
+                log_start_offset = 0
+            else:
+                base_offset = -1
+                log_start_offset = -1
 
-    # LogStartOffset: int64 (8 bytes)
-    response_body += log_start_offset.to_bytes(8, "big", signed=True)
+            # BaseOffset: int64 (8 bytes)
+            response_body += base_offset.to_bytes(8, "big", signed=True)
 
-    # RecordErrors compact array: 0 elements => length = 1
-    response_body += b"\x01"
+            # LogAppendTimeMs: int64 (8 bytes) -> -1
+            response_body += (-1).to_bytes(8, "big", signed=True)
 
-    # ErrorMessage: Compact Nullable String -> null (b"\x00")
-    response_body += b"\x00"
+            # LogStartOffset: int64 (8 bytes)
+            response_body += log_start_offset.to_bytes(8, "big", signed=True)
 
-    # Partition tag buffer: \x00
-    response_body += b"\x00"
+            # RecordErrors compact array: 0 elements => length = 1
+            response_body += b"\x01"
 
-    # Topic tag buffer: \x00
-    response_body += b"\x00"
+            # ErrorMessage: Compact Nullable String -> null (b"\x00")
+            response_body += b"\x00"
+
+            # Partition tag buffer: \x00
+            response_body += b"\x00"
+
+        # Topic tag buffer: \x00
+        response_body += b"\x00"
 
     # ThrottleTimeMs: int32 (4 bytes) -> 0
     response_body += (0).to_bytes(4, "big")
@@ -241,9 +249,7 @@ def build_produce_response(correlation_id, topic_name, partition_index, error_co
     )
 
     print("\n========== PRODUCE RESPONSE ==========")
-    print("TOPIC NAME:", topic_name)
-    print("PARTITION INDEX:", partition_index)
-    print("ERROR CODE:", error_code)
+    print("TOPICS DATA:", topics_data)
     print("RESPONSE HEX:", response.hex())
     print("======================================\n")
 

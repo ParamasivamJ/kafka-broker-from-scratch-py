@@ -379,16 +379,9 @@ def parse_produce_request(request):
             "partitions": partitions
         })
 
-    # Return the first topic name and first partition index to reply with
-    first_topic_name = topics[0]["name"] if topics else ""
-    first_partition_index = topics[0]["partitions"][0]["index"] if topics and topics[0]["partitions"] else 0
-    first_records_bytes = topics[0]["partitions"][0]["records"] if topics and topics[0]["partitions"] else b""
-
-    print("PARSED PRODUCE REQUEST - TOPIC:", first_topic_name, "| PARTITION:", first_partition_index, "| RECORDS BYTES:", len(first_records_bytes))
+    print(f"PARSED PRODUCE REQUEST - TOPICS COUNT: {len(topics)}")
     print("===========================================\n")
 
     return {
-        "topic_name": first_topic_name,
-        "partition_index": first_partition_index,
-        "records": first_records_bytes
+        "topics": topics
     }

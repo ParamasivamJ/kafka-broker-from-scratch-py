@@ -51,37 +51,62 @@ def handle_client(conn):
                 print(f"PRODUCE API VERSION: {api_version}")
                 produce_data = parse_produce_request(request)
                 
-                # Validation
-                error_code = 3 # Default to UNKNOWN_TOPIC_OR_PARTITION
-                try:
-                    metadata = load_metadata()
-                    topic_name_bytes = produce_data["topic_name"].encode("utf-8")
-                    topic_metadata = find_topic_metadata(metadata, topic_name_bytes)
-                    if topic_metadata:
-                        topic_uuid = topic_metadata["uuid"]
-                        partitions = extract_partitions(metadata, topic_uuid)
-                        if produce_data["partition_index"] in partitions:
-                            error_code = 0 # Success
-                            
-                            # Persist records to disk
-                            records = produce_data.get("records", b"")
-                            if records:
-                                topic_name = produce_data["topic_name"]
-                                partition_index = produce_data["partition_index"]
-                                log_dir = f"/tmp/kraft-combined-logs/{topic_name}-{partition_index}"
-                                os.makedirs(log_dir, exist_ok=True)
-                                log_file_path = f"{log_dir}/00000000000000000000.log"
-                                with open(log_file_path, "ab") as f:
-                                    f.write(records)
-                                print(f"Successfully persisted {len(records)} bytes to {log_file_path}")
-                except Exception as val_err:
-                    print("Error during produce validation:", val_err)
+                metadata = load_metadata()
+                topics_response_data = []
 
+                for topic in produce_data["topics"]:
+                    topic_name = topic["name"]
+                    topic_name_bytes = topic_name.encode("utf-8")
+                    
+                    try:
+                        topic_metadata = find_topic_metadata(metadata, topic_name_bytes)
+                    except Exception as topic_err:
+                        print("Error finding topic metadata:", topic_err)
+                        topic_metadata = None
+
+                    topic_uuid = topic_metadata["uuid"] if topic_metadata else None
+                    
+                    try:
+                        partitions = extract_partitions(metadata, topic_uuid) if topic_uuid else []
+                    except Exception as part_err:
+                        print("Error extracting partitions:", part_err)
+                        partitions = []
+
+                    partition_responses = []
+                    for part in topic["partitions"]:
+                        part_index = part["index"]
+                        records = part.get("records", b"")
+                        
+                        # Validate partition
+                        if topic_uuid and (part_index in partitions):
+                            error_code = 0
+                            # Persist to disk
+                            if records:
+                                try:
+                                    log_dir = f"/tmp/kraft-combined-logs/{topic_name}-{part_index}"
+                                    os.makedirs(log_dir, exist_ok=True)
+                                    log_file_path = f"{log_dir}/00000000000000000000.log"
+                                    with open(log_file_path, "ab") as f:
+                                        f.write(records)
+                                    print(f"Successfully persisted {len(records)} bytes to {log_file_path}")
+                                except Exception as persist_err:
+                                    print("Error persisting records:", persist_err)
+                        else:
+                            error_code = 3
+                            
+                        partition_responses.append({
+                            "index": part_index,
+                            "error_code": error_code
+                        })
+                        
+                    topics_response_data.append({
+                        "name": topic_name,
+                        "partitions": partition_responses
+                    })
+                    
                 response = build_produce_response(
                     correlation_id,
-                    produce_data["topic_name"],
-                    produce_data["partition_index"],
-                    error_code
+                    topics_response_data
                 )
                 conn.sendall(response)
             
