@@ -3,10 +3,11 @@ import os
 import socket
 import threading
 sys.path.append(os.path.dirname(__file__))
-from parsing import parse_topics, parse_fetch_request
+from parsing import parse_topics, parse_fetch_request, parse_produce_request
 from protocol import (
     build_apiversions_response,
     build_describe_topic_partitions_response,
+    build_produce_invalid_response,
 )
 from fetch_handler import (
     build_fetch_response_empty_topics,
@@ -42,6 +43,17 @@ def handle_client(conn):
                 response = build_describe_topic_partitions_response(
                     correlation_id,
                     topics,
+                )
+                conn.sendall(response)
+
+            elif api_key == 0:
+                print("\n========== PRODUCE REQUEST ==========")
+                print(f"PRODUCE API VERSION: {api_version}")
+                produce_data = parse_produce_request(request)
+                response = build_produce_invalid_response(
+                    correlation_id,
+                    produce_data["topic_name"],
+                    produce_data["partition_index"]
                 )
                 conn.sendall(response)
             

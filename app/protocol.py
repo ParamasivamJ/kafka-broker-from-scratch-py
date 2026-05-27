@@ -165,3 +165,78 @@ def build_describe_topic_partitions_response(correlation_id, topics):
     print("====================================\n")
 
     return response
+
+
+def build_produce_invalid_response(correlation_id, topic_name, partition_index):
+    def encode_varint(value):
+        out = bytearray()
+        while value >= 0x80:
+            out.append((value & 0x7f) | 0x80)
+            value >>= 7
+        out.append(value & 0x7f)
+        return bytes(out)
+
+    response_body = b""
+
+    # Responses compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # Name (Compact String)
+    topic_name_bytes = topic_name.encode("utf-8")
+    response_body += encode_varint(len(topic_name_bytes) + 1)
+    response_body += topic_name_bytes
+
+    # PartitionResponses compact array: 1 element => length = 2
+    response_body += b"\x02"
+
+    # Index: int32 (4 bytes)
+    response_body += partition_index.to_bytes(4, "big")
+
+    # ErrorCode: int16 (2 bytes) -> 3 (UNKNOWN_TOPIC_OR_PARTITION)
+    response_body += (3).to_bytes(2, "big")
+
+    # BaseOffset: int64 (8 bytes) -> -1
+    response_body += (-1).to_bytes(8, "big", signed=True)
+
+    # LogAppendTimeMs: int64 (8 bytes) -> -1
+    response_body += (-1).to_bytes(8, "big", signed=True)
+
+    # LogStartOffset: int64 (8 bytes) -> -1
+    response_body += (-1).to_bytes(8, "big", signed=True)
+
+    # RecordErrors compact array: 0 elements => length = 1
+    response_body += b"\x01"
+
+    # ErrorMessage: Compact Nullable String -> null (b"\x00")
+    response_body += b"\x00"
+
+    # Partition tag buffer: \x00
+    response_body += b"\x00"
+
+    # Topic tag buffer: \x00
+    response_body += b"\x00"
+
+    # ThrottleTimeMs: int32 (4 bytes) -> 0
+    response_body += (0).to_bytes(4, "big")
+
+    # Response tag buffer: \x00
+    response_body += b"\x00"
+
+    # Response Header Version 1
+    response_header = correlation_id + b"\x00"
+
+    message_size = len(response_header) + len(response_body)
+
+    response = (
+        message_size.to_bytes(4, "big") +
+        response_header +
+        response_body
+    )
+
+    print("\n========== PRODUCE INVALID RESPONSE ==========")
+    print("TOPIC NAME:", topic_name)
+    print("PARTITION INDEX:", partition_index)
+    print("RESPONSE HEX:", response.hex())
+    print("==============================================\n")
+
+    return response

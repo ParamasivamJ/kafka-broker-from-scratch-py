@@ -284,3 +284,106 @@ def parse_fetch_request(request):
         "topic_id": topic_id,
         "partition_index": target_partition_index
     }
+
+
+def parse_produce_request(request):
+    print("\n========== PRODUCE REQUEST DEBUG ==========")
+    print("REQUEST LENGTH:", len(request))
+
+    cursor = 0
+
+    # Fixed Header
+    cursor += 4 # message_size
+    cursor += 2 # api_key
+    cursor += 2 # api_version
+    cursor += 4 # correlation_id
+
+    # client_id
+    client_id_length = int.from_bytes(request[cursor:cursor + 2], "big")
+    cursor += 2
+    if client_id_length > 0:
+        cursor += client_id_length
+
+    # header tag buffer
+    header_tag = request[cursor]
+    cursor += 1
+
+    def read_varint(data, offset):
+        val = 0
+        shift = 0
+        while True:
+            b = data[offset]
+            offset += 1
+            val |= (b & 0x7f) << shift
+            if not (b & 0x80):
+                break
+            shift += 7
+        return val, offset
+
+    # TransactionalId (Compact Nullable String)
+    tx_id_len, cursor = read_varint(request, cursor)
+    if tx_id_len > 0:
+        cursor += (tx_id_len - 1)
+
+    # Acks (int16)
+    acks = int.from_bytes(request[cursor:cursor+2], "big")
+    cursor += 2
+
+    # TimeoutMs (int32)
+    timeout = int.from_bytes(request[cursor:cursor+4], "big")
+    cursor += 4
+
+    # TopicData (compact array)
+    topics_raw, cursor = read_varint(request, cursor)
+    topics_count = topics_raw - 1
+
+    print("PRODUCE TOPICS COUNT:", topics_count)
+
+    topics = []
+    for _ in range(topics_count):
+        # Name (Compact String)
+        name_len, cursor = read_varint(request, cursor)
+        name_bytes = request[cursor:cursor + name_len - 1]
+        topic_name = name_bytes.decode("utf-8")
+        cursor += (name_len - 1)
+
+        # PartitionData (compact array)
+        partitions_raw, cursor = read_varint(request, cursor)
+        partitions_count = partitions_raw - 1
+
+        partitions = []
+        for _ in range(partitions_count):
+            index = int.from_bytes(request[cursor:cursor+4], "big")
+            cursor += 4
+
+            # Records (COMPACT_NULLABLE_BYTES)
+            records_raw_len, cursor = read_varint(request, cursor)
+            if records_raw_len > 0:
+                cursor += (records_raw_len - 1)
+
+            # partition tag buffer
+            _, cursor = read_varint(request, cursor)
+
+            partitions.append({
+                "index": index
+            })
+
+        # topic tag buffer
+        _, cursor = read_varint(request, cursor)
+
+        topics.append({
+            "name": topic_name,
+            "partitions": partitions
+        })
+
+    # Return the first topic name and first partition index to reply with
+    first_topic_name = topics[0]["name"] if topics else ""
+    first_partition_index = topics[0]["partitions"][0]["index"] if topics and topics[0]["partitions"] else 0
+
+    print("PARSED PRODUCE REQUEST - TOPIC:", first_topic_name, "| PARTITION:", first_partition_index)
+    print("===========================================\n")
+
+    return {
+        "topic_name": first_topic_name,
+        "partition_index": first_partition_index
+    }
