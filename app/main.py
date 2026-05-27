@@ -15,7 +15,7 @@ from fetch_handler import (
     build_fetch_response_empty_records,
     build_fetch_response_with_records,
 )
-from metadata_utils import load_metadata, topic_uuid_exists, find_topic_name_by_uuid
+from metadata_utils import load_metadata, topic_uuid_exists, find_topic_name_by_uuid, find_topic_metadata, extract_partitions
 
 
 def handle_client(conn):
