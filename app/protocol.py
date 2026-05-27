@@ -9,8 +9,14 @@ def build_apiversions_response(correlation_id, api_version):
     # error_code
     response_body += error_code.to_bytes(2, "big")
 
-    # 3 APIs → compact array = 3 + 1 = 4
-    response_body += b"\x04"
+    # 4 APIs → compact array = 4 + 1 = 5
+    response_body += b"\x05"
+
+    # API 0 (Produce)
+    response_body += (0).to_bytes(2, "big")
+    response_body += (0).to_bytes(2, "big")
+    response_body += (11).to_bytes(2, "big")
+    response_body += b"\x00"
 
     # API 18 (ApiVersions)
     response_body += (18).to_bytes(2, "big")
