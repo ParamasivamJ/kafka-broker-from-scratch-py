@@ -1,10 +1,10 @@
-# 🟢 Kafka Broker — Python
+# Kafka Broker — Python
 
 A **fully functional Kafka-compatible message broker** built from scratch in Python using only the standard library. Implements the Kafka binary wire protocol including `ApiVersions`, `DescribeTopicPartitions`, `Fetch`, and `Produce` APIs.
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 kafka-broker-python/
@@ -25,7 +25,7 @@ kafka-broker-python/
 │           ├── 00000000000000000000.log   # KRaft metadata (empty by default)
 │           └── .gitkeep
 │
-├── kafka_broker_guide.md             # 📖 Complete learning guide (1000+ lines)
+├── kafka_broker_guide.md             #  Complete learning guide 
 ├── pyproject.toml                    # Python project metadata
 ├── uv.lock                          # Dependency lockfile
 ├── .gitignore                        # Git exclusions (runtime logs ignored)
@@ -34,7 +34,7 @@ kafka-broker-python/
 
 ---
 
-## 🚀 Quick Start (Local Development)
+## Quick Start (Local Development)
 
 ### Prerequisites
 
@@ -77,7 +77,7 @@ kcat -b localhost:9092 -C -t my-topic
 
 ---
 
-## ⚙️ Configuration
+## Configuration
 
 All configuration is centralized in [`app/config.py`](app/config.py) and driven by **environment variables**:
 
@@ -95,7 +95,7 @@ KAFKA_BROKER_PORT=19092 python -m app.main
 
 ---
 
-## 📖 Learning Guide
+## Learning Guide
 
 See [`kafka_broker_guide.md`](kafka_broker_guide.md) for a comprehensive, walkthrough covering:
 
@@ -108,7 +108,7 @@ See [`kafka_broker_guide.md`](kafka_broker_guide.md) for a comprehensive, walkth
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────┐
@@ -141,7 +141,7 @@ See [`kafka_broker_guide.md`](kafka_broker_guide.md) for a comprehensive, walkth
 
 ---
 
-## 🧪 Testing
+## Testing
 
 ### Local smoke test
 
@@ -165,6 +165,3 @@ s.close()
 
 ---
 
-## 📄 License
-
-This project is built for educational and development purposes.
