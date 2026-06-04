@@ -1,3 +1,6 @@
+from binary_utils import read_varint
+
+
 def parse_topics(request):
     print("\n========== PARSE TOPICS ==========")
 
@@ -199,17 +202,6 @@ def parse_fetch_request(request):
     # Topics COMPACT_ARRAY
     # -------------------------------------------------
 
-    def read_varint(data, offset):
-        val = 0
-        shift = 0
-        while True:
-            b = data[offset]
-            offset += 1
-            val |= (b & 0x7f) << shift
-            if not (b & 0x80):
-                break
-            shift += 7
-        return val, offset
 
     topics_raw, cursor = read_varint(request, cursor)
     topics_count = topics_raw - 1
@@ -308,17 +300,6 @@ def parse_produce_request(request):
     header_tag = request[cursor]
     cursor += 1
 
-    def read_varint(data, offset):
-        val = 0
-        shift = 0
-        while True:
-            b = data[offset]
-            offset += 1
-            val |= (b & 0x7f) << shift
-            if not (b & 0x80):
-                break
-            shift += 7
-        return val, offset
 
     # TransactionalId (Compact Nullable String)
     tx_id_len, cursor = read_varint(request, cursor)

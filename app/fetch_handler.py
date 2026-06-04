@@ -1,11 +1,4 @@
-def encode_varint(value):
-    out = bytearray()
-    while value >= 0x80:
-        out.append((value & 0x7f) | 0x80)
-        value >>= 7
-    out.append(value & 0x7f)
-    return bytes(out)
-
+from binary_utils import encode_varint
 
 def build_fetch_response_with_records(
     correlation_id,

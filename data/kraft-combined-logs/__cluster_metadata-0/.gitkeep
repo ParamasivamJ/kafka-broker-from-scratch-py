@@ -1,0 +1,2 @@
+# This file ensures the __cluster_metadata-0 directory is tracked by git.
+# Place your KRaft metadata log (00000000000000000000.log) here for local testing.

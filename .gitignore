@@ -172,3 +172,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+
+# ─── Kafka Broker (project-specific) ─────────────────────────────────────────
+
+# Runtime data — topic partition logs are generated at runtime
+data/kraft-combined-logs/*
+!data/kraft-combined-logs/__cluster_metadata-0/
+data/kraft-combined-logs/__cluster_metadata-0/*
+!data/kraft-combined-logs/__cluster_metadata-0/.gitkeep
+
+# Kafka broker guide (large generated doc — keep in repo but optional)
+# kafka_broker_guide.md

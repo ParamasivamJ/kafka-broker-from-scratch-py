@@ -1,4 +1,5 @@
-from metadata_utils import load_metadata, find_topic_metadata,extract_partitions
+from metadata_utils import load_metadata, find_topic_metadata, extract_partitions
+from binary_utils import encode_varint
 
 
 def build_apiversions_response(correlation_id, api_version):
@@ -168,13 +169,6 @@ def build_describe_topic_partitions_response(correlation_id, topics):
 
 
 def build_produce_response(correlation_id, topics_data):
-    def encode_varint(value):
-        out = bytearray()
-        while value >= 0x80:
-            out.append((value & 0x7f) | 0x80)
-            value >>= 7
-        out.append(value & 0x7f)
-        return bytes(out)
 
     response_body = b""
 
